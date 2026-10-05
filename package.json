@@ -1,0 +1,33 @@
+{
+  "name": "tokease",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Tokease desktop connector: one-click setup for Codex / Claude Code / Gemini CLI",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "mock": "node mock-server/server.mjs",
+    "core:test": "cargo test -p tokease-core",
+    "cli": "cargo run -q -p tokease-core --bin tokease-cli --"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.12.1",
+    "@tauri-apps/plugin-opener": "^2.7.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.12.1",
+    "@types/node": "^26.6.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "^5.9.0",
+    "vite": "^8.3.2"
+  }
+}

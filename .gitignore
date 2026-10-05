@@ -1,0 +1,19 @@
+# node
+node_modules/
+dist/
+*.local
+
+# rust
+target/
+
+# tauri
+src-tauri/gen/
+src-tauri/icons/android/
+src-tauri/icons/ios/
+
+# editors / os
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log
