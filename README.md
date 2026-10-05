@@ -20,7 +20,7 @@
 tokease/
 ├─ src/                        React + TypeScript 前端（只做 UI 和状态展示）
 │  ├─ pages/Home.tsx           首页：Logo、登录状态、三张客户端卡片
-│  ├─ pages/Advanced.tsx       隐藏的高级页：服务器地址、会话、平台配置、备份
+│  ├─ pages/Advanced.tsx       设置页：服务器地址、会话、平台配置、备份
 │  ├─ components/              Logo / ClientCard / LoginPanel
 │  └─ lib/bridge.ts            Tauri IPC 封装；非 Tauri 环境自动切换到浏览器 mock
 ├─ src-tauri/                  Tauri 2 壳层：仅把 core 暴露为 IPC 命令
@@ -70,7 +70,7 @@ sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file \
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
-> Linux 上 Token 存入 Secret Service（GNOME Keyring / KWallet）。无 Secret Service 的无头环境会自动回退为 `~/.tokease/credentials.json`（0600），高级页会显示当前存储位置。
+> Linux 上 Token 存入 Secret Service（GNOME Keyring / KWallet）。无 Secret Service 的无头环境会自动回退为 `~/.tokease/credentials.json`（0600），设置页会显示当前存储位置。
 
 ## 运行
 
@@ -85,7 +85,7 @@ TOKEASE_SERVER_URL=http://127.0.0.1:8787/v1 pnpm tauri:dev
 #   Windows PowerShell:  $env:TOKEASE_SERVER_URL="http://127.0.0.1:8787/v1"; pnpm tauri:dev
 ```
 
-不设置 `TOKEASE_SERVER_URL` 时默认连 **`https://www.tokease.cn/v1`**。高级页只能在 `https://www.tokease.cn/v1` 和 `https://www.tokease.com/v1` 之间切换。认证接口（`/auth/*`、`/client/config`）挂在这个地址下；服务端还没实现 `/client/config`（404）时，客户端用内置默认值：OpenAI 兼容地址 = 服务器地址本身，Anthropic / Gemini = 去掉 `/v1` 的根地址，模型 `code-best / code-fast / code-cheap`。
+不设置 `TOKEASE_SERVER_URL` 时默认连 **`https://www.tokease.cn/v1`**。设置页只能在 `https://www.tokease.cn/v1` 和 `https://www.tokease.com/v1` 之间切换。认证接口（`/auth/*`、`/client/config`）挂在这个地址下；服务端还没实现 `/client/config`（404）时，客户端用内置默认值：OpenAI 兼容地址 = 服务器地址本身，Anthropic / Gemini = 去掉 `/v1` 的根地址，模型 `code-best / code-fast / code-cheap`。
 
 打包：`pnpm tauri:build`（产物在 `src-tauri/target/release/bundle/`）。
 
@@ -148,7 +148,7 @@ detect() → plan()（只读：解析 → 补丁 → 新内容） → backup_con
 - 每个客户端一把写锁，启用 / 恢复不会交错
 - 备份在 `~/.tokease/backups/<client>/<时间戳>/`，带 `manifest.json`；原本不存在的文件在恢复时会被删除
 - 重复点「启用」不会覆盖最初的恢复点（始终指向用户接入 Tokease 之前的那份）
-- 「恢复原配置」前会再做一次快照，所以恢复也可撤销（高级页 → 备份 → 恢复到此）
+- 「恢复原配置」前会再做一次快照，所以恢复也可撤销（设置页 → 对应客户端 → 恢复到此）
 - 「已启用」= 本地有恢复点记录 **且** 当前文件仍指向 Tokease；用户手改过配置会显示「配置已被修改，可重新启用」
 
 ### 检测与提示
@@ -225,7 +225,7 @@ fn env_conflict_prefixes(&self) -> &'static [&'static str];
 现在启用时把服务端下发的逻辑模型（`code-best` / `code-fast` / `code-cheap`）写进 CLI 配置，卡片只展示当前模型，不能改。真实上游由服务端路由。下面三步按依赖往前排。
 
 - [ ] **模型切换**：重构模型 UI，做成和 [CC Switch](https://github.com/farion1231/cc-switch) 一样的切换。选一个模型，配置立刻换成它，地址和凭据不动。供应商仍是 Tokease。
-  - [ ] 每个客户端卡片上直接选模型，不必进高级页，也不必先恢复再重新启用
+  - [ ] 每个客户端卡片上直接选模型，不必进设置页，也不必先恢复再重新启用
   - [ ] 可选列表来自 `/client/config` 的 `models`。Claude Code 的 Opus / Sonnet / Haiku 分档各自选；Codex、Gemini 选当前主模型
   - [ ] 切换只改模型相关的关键字段（见「各客户端写了什么」），其余键、注释、格式保持原样；同样经过备份、并发检查、原子写入和失败回滚
   - [ ] 多供应商档案、代理、MCP、用量同步留到后面
@@ -242,7 +242,7 @@ fn env_conflict_prefixes(&self) -> &'static [&'static str];
 ## 已知限制
 
 - Codex < 0.149 不支持 `experimental_bearer_token`，卡片会提示升级；不再回退到改写 `auth.json`
-- 备份不自动清理（都很小，但可在高级页手动查看）
+- 备份不自动清理（都很小，但可在设置页手动查看）
 - 本机 Linux 开发时若装不了 `libwebkit2gtk-4.1-dev`，可以先用 `pnpm dev` + `pnpm cli` 覆盖全部逻辑
 
 ## 许可证

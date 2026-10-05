@@ -124,7 +124,7 @@ export default function App() {
   const commands = useMemo<PaletteItem[]>(() => {
     const items: PaletteItem[] = [
       ...NAV.map((n) => ({ id: `page:${n.id}`, label: n.label, hint: "页面" })),
-      { id: "page:advanced", label: "高级设置", hint: "页面" },
+      { id: "page:advanced", label: "设置", hint: "页面" },
     ];
     if (session?.logged_in) items.push({ id: "logout", label: "退出登录", hint: session.user?.email ?? undefined });
     else items.push({ id: "login", label: "登录 Tokease", hint: "账号" });
@@ -194,7 +194,7 @@ export default function App() {
           {menuOpen && (
             <div className="menu" role="menu">
               <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); setPage("advanced"); }}>
-                高级设置
+                设置
               </button>
               {session?.logged_in ? (
                 <button

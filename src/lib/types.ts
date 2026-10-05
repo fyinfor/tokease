@@ -160,7 +160,7 @@ export function errorText(e: unknown): string {
       case "rolled_back":
         return "写入配置后校验失败，已自动恢复原配置。";
       case "rollback_failed":
-        return "写入失败且自动恢复失败，请到高级页面手动恢复备份。";
+        return "写入失败且自动恢复失败，请到设置页面手动恢复备份。";
       case "no_backup":
         return "没有可恢复的备份。";
       case "patch":
