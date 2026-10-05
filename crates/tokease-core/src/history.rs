@@ -8,9 +8,11 @@
 //! * OpenCode — `$XDG_DATA_HOME/opencode/opencode.db` (`session_v2`)
 //! * Gemini CLI — `~/.gemini/tmp/**/chats/*.json` when that tree exists
 //!
-//! Listing reads a short prefix of large files. A transcript stops after a
-//! fixed number of messages or bytes and reports that it was cut short.
+//! Codex transcripts come from `thread_history_1.sqlite` when it exists, so a
+//! long rollout file is not cut off after the first few megabytes. Listing
+//! still peeks at rollout files for the working directory and model.
 
+use std::collections::BTreeMap;
 use std::fs::{self, File};
 use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
@@ -22,9 +24,8 @@ use serde_json::Value;
 use crate::adapters::{home_dir, ClientId};
 
 const LIST_HEAD: usize = 96 * 1024;
-const TRANSCRIPT_BYTES: u64 = 8 * 1024 * 1024;
-const MAX_MESSAGES: usize = 240;
-const MAX_TEXT: usize = 4_000;
+const MAX_MESSAGES: usize = 4_000;
+const MAX_TEXT: usize = 100_000;
 const MAX_SESSIONS: usize = 300;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -189,10 +190,42 @@ fn claude_sessions(dir: &Path) -> Vec<Found> {
 fn codex_sessions(dir: &Path) -> Vec<Found> {
     let mut files = collect_files(&dir.join("sessions"), 6, ".jsonl");
     files.extend(collect_files(&dir.join("archived_sessions"), 6, ".jsonl"));
-    files
-        .into_iter()
-        .filter_map(|path| codex_head(&path))
-        .collect()
+    let mut by_id: BTreeMap<String, Found> = BTreeMap::new();
+    for path in files {
+        if let Some(found) = codex_head(&path) {
+            by_id.insert(found.session.id.clone(), found);
+        }
+    }
+    match codex_db_summaries(&dir.join("thread_history_1.sqlite")) {
+        Ok(rows) => {
+            for row in rows {
+                match by_id.get_mut(&row.session.id) {
+                    Some(existing) => {
+                        existing.session.message_count = row.session.message_count;
+                        if row.session.updated_at.is_some() {
+                            existing.session.updated_at = row.session.updated_at;
+                        }
+                        if existing.session.title == "未命名会话" {
+                            existing.session.title = row.session.title;
+                        }
+                    }
+                    None => {
+                        by_id.insert(row.session.id.clone(), row);
+                    }
+                }
+            }
+        }
+        Err(err) => log::warn!("codex history db: {err}"),
+    }
+    for (id, name) in codex_index_names(&dir.join("session_index.jsonl")) {
+        let key = format!("codex:{id}");
+        if let Some(found) = by_id.get_mut(&key) {
+            if !name.trim().is_empty() {
+                found.session.title = title_from(&name);
+            }
+        }
+    }
+    by_id.into_values().collect()
 }
 
 fn codex_head(path: &Path) -> Option<Found> {
@@ -242,7 +275,7 @@ fn codex_head(path: &Path) -> Option<Found> {
                 if payload.get("role").and_then(Value::as_str) != Some("user") {
                     continue;
                 }
-                let text = visible_text(payload.get("content").unwrap_or(&Value::Null), "user");
+                let text = text_of(payload.get("content").unwrap_or(&Value::Null));
                 if !text.trim().is_empty() {
                     title = Some(title_from(&text));
                 }
@@ -382,7 +415,8 @@ fn opencode_sessions(db_path: &Path) -> Result<Vec<Found>, String> {
 
 fn load_transcript(roots: &HistoryRoots, found: Found) -> ChatTranscript {
     let (messages, truncated, missing_file) = match found.kind {
-        Source::ClaudeJsonl | Source::CodexJsonl => match &found.path {
+        Source::CodexJsonl => codex_transcript(&roots.codex_dir, &found),
+        Source::ClaudeJsonl => match &found.path {
             Some(path) if path.is_file() => {
                 let (msgs, cut) = jsonl_messages(path, found.kind);
                 (msgs, cut, false)
@@ -424,23 +458,19 @@ fn jsonl_messages(path: &Path, kind: Source) -> (Vec<ChatMessage>, bool) {
     let Ok(file) = File::open(path) else {
         return (Vec::new(), false);
     };
-    let size = file.metadata().map(|m| m.len()).unwrap_or(0);
     let mut reader = BufReader::new(file);
     let mut messages = Vec::new();
-    let mut read: u64 = 0;
     let mut buf = String::new();
     let mut hit_cap = false;
     loop {
-        buf.clear();
-        let n = match reader.read_line(&mut buf) {
-            Ok(0) => break,
-            Ok(n) => n as u64,
-            Err(_) => break,
-        };
-        read += n;
-        if read > TRANSCRIPT_BYTES || messages.len() >= MAX_MESSAGES {
+        if messages.len() >= MAX_MESSAGES {
             hit_cap = true;
             break;
+        }
+        buf.clear();
+        match reader.read_line(&mut buf) {
+            Ok(0) | Err(_) => break,
+            Ok(_) => {}
         }
         let Ok(v) = serde_json::from_str::<Value>(buf.trim()) else {
             continue;
@@ -453,7 +483,7 @@ fn jsonl_messages(path: &Path, kind: Source) -> (Vec<ChatMessage>, bool) {
             messages.push(msg);
         }
     }
-    (messages, hit_cap || size > read)
+    (messages, hit_cap)
 }
 
 fn claude_line(v: &Value) -> Option<ChatMessage> {
@@ -495,10 +525,7 @@ fn codex_line(v: &Value) -> Option<ChatMessage> {
     if role != "user" && role != "assistant" {
         return None;
     }
-    let text = clip(&visible_text(
-        payload.get("content").unwrap_or(&Value::Null),
-        role,
-    ));
+    let text = clip(&text_of(payload.get("content").unwrap_or(&Value::Null)));
     if text.is_empty() {
         return None;
     }
@@ -654,15 +681,182 @@ fn text_of(v: &Value) -> String {
     text_parts(v).join("\n")
 }
 
-/// Codex stuffs instructions into extra `input_text` parts. The user's own
-/// text is the last part when there are several.
-fn visible_text(v: &Value, role: &str) -> String {
-    let parts = text_parts(v);
-    if role == "user" && parts.len() > 3 {
-        parts.last().cloned().unwrap_or_default()
-    } else {
-        parts.join("\n")
+fn codex_transcript(dir: &Path, found: &Found) -> (Vec<ChatMessage>, bool, bool) {
+    let sid = found.session.id.strip_prefix("codex:").unwrap_or("");
+    match codex_db_messages(&dir.join("thread_history_1.sqlite"), sid) {
+        Ok(Some((msgs, cut))) => return (msgs, cut, false),
+        Ok(None) => {}
+        Err(err) => log::warn!("codex history db: {err}"),
     }
+    match &found.path {
+        Some(path) if path.is_file() => {
+            let (msgs, cut) = jsonl_messages(path, Source::CodexJsonl);
+            (msgs, cut, false)
+        }
+        _ => (Vec::new(), false, true),
+    }
+}
+
+fn codex_db_summaries(db_path: &Path) -> Result<Vec<Found>, String> {
+    if !db_path.is_file() {
+        return Ok(Vec::new());
+    }
+    let conn = open_ro(db_path)?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT thread_id, MAX(created_at_ms),
+                    SUM(item_type IN ('userMessage', 'agentMessage'))
+             FROM thread_items
+             GROUP BY thread_id",
+        )
+        .map_err(|e| e.to_string())?;
+    let stats: Vec<(String, Option<i64>, Option<i64>)> = stmt
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+    let titles = codex_db_titles(&conn)?;
+    Ok(stats
+        .into_iter()
+        .map(|(id, updated, count)| Found {
+            session: ChatSession {
+                id: format!("codex:{id}"),
+                client: ClientId::Codex,
+                title: titles
+                    .get(&id)
+                    .cloned()
+                    .unwrap_or_else(|| "未命名会话".into()),
+                model: None,
+                cwd: None,
+                updated_at: updated.and_then(epoch_to_rfc3339),
+                message_count: count.map(|n| n as u32),
+            },
+            path: None,
+            kind: Source::CodexJsonl,
+        })
+        .collect())
+}
+
+fn codex_db_titles(conn: &Connection) -> Result<BTreeMap<String, String>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT i.thread_id, i.item_json
+             FROM thread_items i
+             JOIN (
+               SELECT thread_id, MIN(rollout_ordinal) AS ord
+               FROM thread_items
+               WHERE item_type = 'userMessage'
+               GROUP BY thread_id
+             ) f ON f.thread_id = i.thread_id AND f.ord = i.rollout_ordinal
+             WHERE i.item_type = 'userMessage'",
+        )
+        .map_err(|e| e.to_string())?;
+    let mut out = BTreeMap::new();
+    let rows = stmt
+        .query_map([], |row| Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?)))
+        .map_err(|e| e.to_string())?;
+    for row in rows {
+        let (id, raw) = row.map_err(|e| e.to_string())?;
+        let Ok(doc) = serde_json::from_str::<Value>(&raw) else {
+            continue;
+        };
+        let text = text_of(doc.get("content").unwrap_or(&Value::Null));
+        if !text.trim().is_empty() {
+            out.insert(id, title_from(&text));
+        }
+    }
+    Ok(out)
+}
+
+fn codex_db_messages(db_path: &Path, thread_id: &str) -> Result<Option<(Vec<ChatMessage>, bool)>, String> {
+    if !db_path.is_file() || thread_id.is_empty() {
+        return Ok(None);
+    }
+    let conn = open_ro(db_path)?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT item_type, item_json, created_at_ms
+             FROM thread_items
+             WHERE thread_id = ?1 AND item_type IN ('userMessage', 'agentMessage')
+             ORDER BY rollout_ordinal",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([thread_id], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<i64>>(2)?,
+            ))
+        })
+        .map_err(|e| e.to_string())?;
+    let mut messages = Vec::new();
+    let mut seen = false;
+    let mut truncated = false;
+    for row in rows {
+        seen = true;
+        if messages.len() >= MAX_MESSAGES {
+            truncated = true;
+            break;
+        }
+        let (kind, raw, at) = row.map_err(|e| e.to_string())?;
+        let Ok(doc) = serde_json::from_str::<Value>(&raw) else {
+            continue;
+        };
+        let text = if kind == "agentMessage" {
+            doc.get("text").and_then(Value::as_str).unwrap_or("").to_string()
+        } else {
+            text_of(doc.get("content").unwrap_or(&Value::Null))
+        };
+        let text = clip(&text);
+        if text.is_empty() {
+            continue;
+        }
+        messages.push(ChatMessage {
+            role: if kind == "userMessage" {
+                "user"
+            } else {
+                "assistant"
+            }
+            .into(),
+            text,
+            at: at.and_then(epoch_to_rfc3339),
+        });
+    }
+    if !seen {
+        return Ok(None);
+    }
+    Ok(Some((messages, truncated)))
+}
+
+fn codex_index_names(path: &Path) -> BTreeMap<String, String> {
+    let mut out = BTreeMap::new();
+    let Ok(text) = fs::read_to_string(path) else {
+        return out;
+    };
+    for line in text.lines() {
+        let Ok(v) = serde_json::from_str::<Value>(line) else {
+            continue;
+        };
+        let Some(id) = v.get("id").and_then(Value::as_str) else {
+            continue;
+        };
+        let Some(name) = v.get("thread_name").and_then(Value::as_str) else {
+            continue;
+        };
+        if !name.trim().is_empty() {
+            out.insert(id.to_string(), name.to_string());
+        }
+    }
+    out
+}
+
+fn open_ro(path: &Path) -> Result<Connection, String> {
+    Connection::open_with_flags(
+        path,
+        OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
+    )
+    .map_err(|e| e.to_string())
 }
 
 fn model_id_of(raw: &str) -> Option<String> {
@@ -817,6 +1011,40 @@ mod tests {
              {\"type\":\"response_item\",\"payload\":{\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"output_text\",\"text\":\"好了\"}]}}\n",
         )
         .unwrap();
+        fs::write(
+            day.join("rollout-parts.jsonl"),
+            "{\"type\":\"session_meta\",\"payload\":{\"session_id\":\"cx2\",\"cwd\":\"/repo\",\"timestamp\":\"2026-10-05T02:00:00Z\"}}\n\
+             {\"type\":\"response_item\",\"payload\":{\"type\":\"message\",\"role\":\"user\",\"content\":[{\"type\":\"input_text\",\"text\":\"前文\"},{\"type\":\"input_text\",\"text\":\"中段\"},{\"type\":\"input_text\",\"text\":\"后段\"},{\"type\":\"input_text\",\"text\":\"真正的问题\"}]}}\n",
+        )
+        .unwrap();
+        fs::write(
+            r.codex_dir.join("session_index.jsonl"),
+            "{\"id\":\"cx1\",\"thread_name\":\"索引标题\",\"updated_at\":1}\n",
+        )
+        .unwrap();
+        let db = Connection::open(r.codex_dir.join("thread_history_1.sqlite")).unwrap();
+        db.execute_batch(
+            "CREATE TABLE thread_items (
+                thread_id TEXT, rollout_ordinal INTEGER, created_at_ms INTEGER,
+                item_json TEXT, item_type TEXT
+             );
+             INSERT INTO thread_items VALUES (
+                'cx1', 1, 1788145348398,
+                '{\"content\":[{\"type\":\"text\",\"text\":\"数据库里的完整提问\"}]}',
+                'userMessage'
+             );
+             INSERT INTO thread_items VALUES (
+                'cx1', 2, 1788145349000,
+                '{\"text\":\"数据库里的完整回答\"}',
+                'agentMessage'
+             );
+             INSERT INTO thread_items VALUES (
+                'cx-only', 1, 1788145400000,
+                '{\"content\":[{\"type\":\"text\",\"text\":\"只有数据库\"}]}',
+                'userMessage'
+             );",
+        )
+        .unwrap();
 
         fs::create_dir_all(r.opencode_db.parent().unwrap()).unwrap();
         let conn = Connection::open(&r.opencode_db).unwrap();
@@ -859,10 +1087,20 @@ mod tests {
         assert!(ids.contains(&"codex:cx1"), "{ids:?}");
         assert!(ids.contains(&"opencode:ses_1"), "{ids:?}");
         assert!(ids.contains(&"gemini:g1"), "{ids:?}");
-        assert_eq!(
-            listed.iter().find(|s| s.id == "codex:cx1").unwrap().model.as_deref(),
-            Some("code-best")
-        );
+        assert!(ids.contains(&"codex:cx-only"), "{ids:?}");
+        let cx1 = listed.iter().find(|s| s.id == "codex:cx1").unwrap();
+        assert_eq!(cx1.model.as_deref(), Some("code-best"));
+        assert_eq!(cx1.title, "索引标题");
+        assert_eq!(cx1.message_count, Some(2));
+
+        let full = read(&r, "codex:cx1").unwrap();
+        assert_eq!(full.messages.len(), 2);
+        assert_eq!(full.messages[0].text, "数据库里的完整提问");
+        assert_eq!(full.messages[1].text, "数据库里的完整回答");
+
+        let parts = read(&r, "codex:cx2").unwrap();
+        assert!(parts.messages[0].text.contains("前文"));
+        assert!(parts.messages[0].text.contains("真正的问题"));
 
         let claude = read(&r, "claude:s1").unwrap();
         assert_eq!(claude.messages.len(), 2);

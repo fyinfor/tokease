@@ -59,7 +59,7 @@ export function Sessions({ clientId, clients, onBack }: Props) {
   };
 
   return (
-    <div className="subpage">
+    <div className="subpage subpage--session">
       <header className="pagehead pagehead--split">
         <div>
           <h1>{open ? "会话内容" : `${name} 的会话记录`}</h1>
