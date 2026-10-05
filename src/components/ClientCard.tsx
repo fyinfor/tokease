@@ -1,20 +1,28 @@
 import { useState } from "react";
-import type { ClientStatus } from "../lib/types";
+import type { ClientId, ClientStatus } from "../lib/types";
 import { errorText } from "../lib/types";
+import { MarkClaude, MarkCodex, MarkGemini } from "./icons";
 
 interface Props {
   client: ClientStatus;
   loggedIn: boolean;
   onEnable: () => Promise<void>;
   onRestore: () => Promise<void>;
+  onNeedLogin: () => void;
 }
 
-const ICONS: Record<string, string> = { codex: "◆", claude: "✱", gemini: "✦" };
+const META: Record<ClientId, { vendor: string; mark: typeof MarkCodex }> = {
+  codex: { vendor: "OpenAI", mark: MarkCodex },
+  claude: { vendor: "Anthropic", mark: MarkClaude },
+  gemini: { vendor: "Google", mark: MarkGemini },
+};
 
-export function ClientCard({ client, loggedIn, onEnable, onRestore }: Props) {
+export function ClientCard({ client, loggedIn, onEnable, onRestore, onNeedLogin }: Props) {
   const [busy, setBusy] = useState<"enable" | "restore" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const meta = META[client.id];
+  const Mark = meta.mark;
 
   const run = async (kind: "enable" | "restore", fn: () => Promise<void>, done: string) => {
     setBusy(kind);
@@ -31,6 +39,7 @@ export function ClientCard({ client, loggedIn, onEnable, onRestore }: Props) {
     }
   };
 
+  const needsLogin = !loggedIn && client.installed && client.available && !busy;
   const canEnable = loggedIn && client.installed && client.available && !busy;
   const canRestore = (client.enabled || !!client.backup_id) && !busy;
   const hint = !client.installed
@@ -46,29 +55,39 @@ export function ClientCard({ client, loggedIn, onEnable, onRestore }: Props) {
             : "尚未接入 Tokease";
 
   return (
-    <section className={`card ${client.enabled ? "card--on" : ""}`}>
-      <header className="card__head">
-        <span className="card__icon" aria-hidden>
-          {ICONS[client.id]}
+    <article className={`tool tool--${client.id} ${client.installed ? "" : "tool--off"}`}>
+      <div className="tool__row">
+        <span className={`mark mark--${client.id}`} aria-hidden>
+          <Mark />
         </span>
-        <div className="card__title">
-          <h2>{client.name}</h2>
-          <p className="card__hint">{hint}</p>
+        <div className="tool__copy">
+          <div className="tool__title">
+            <h2>{client.name}</h2>
+            <span className="tag">CLI</span>
+            <span className="tag tag--vendor">{meta.vendor}</span>
+          </div>
+          <p>{hint}</p>
         </div>
-        <div className="pills">
-          <span className={`pill ${client.installed ? "pill--ok" : "pill--muted"}`}>{client.installed ? "已安装" : "未安装"}</span>
-          <span className={`pill ${client.enabled ? "pill--on" : "pill--muted"}`}>{client.enabled ? "已启用" : "未启用"}</span>
+        <div className="tool__side">
+          <span className={client.installed ? "install install--on" : "install"}>
+            <i />
+            {client.installed ? "已安装" : "未安装"}
+          </span>
+          <div className="tool__actions">
+            <button
+              type="button"
+              className="btn btn--primary"
+              disabled={!canEnable && !needsLogin}
+              onClick={() => (needsLogin ? onNeedLogin() : run("enable", onEnable, client.enabled ? "已重新启用" : "已启用"))}
+            >
+              {busy === "enable" ? <span className="spinner" /> : client.enabled ? "重新启用" : "一键启用"}
+            </button>
+            <button type="button" className="btn btn--quiet" disabled={!canRestore} onClick={() => run("restore", onRestore, "已恢复原配置")}>
+              {busy === "restore" ? <span className="spinner" /> : "恢复原配置"}
+            </button>
+          </div>
+          {flash && <span className="flash">{flash}</span>}
         </div>
-      </header>
-
-      <div className="card__actions">
-        <button className="btn btn--primary" disabled={!canEnable} onClick={() => run("enable", onEnable, "已启用")}>
-          {busy === "enable" ? <span className="spinner" /> : client.enabled ? "重新启用" : "一键启用"}
-        </button>
-        <button className="btn" disabled={!canRestore} onClick={() => run("restore", onRestore, "已恢复原配置")}>
-          {busy === "restore" ? <span className="spinner spinner--dark" /> : "恢复原配置"}
-        </button>
-        {flash && <span className="flash">{flash}</span>}
       </div>
 
       {error && (
@@ -76,7 +95,6 @@ export function ClientCard({ client, loggedIn, onEnable, onRestore }: Props) {
           {error}
         </p>
       )}
-
       {client.outdated && (
         <p className="card__warn">
           {client.name} 版本 {client.version} 过旧，需 ≥ {client.min_version} 才支持 Tokease 的接入方式，请先升级。
@@ -94,6 +112,6 @@ export function ClientCard({ client, loggedIn, onEnable, onRestore }: Props) {
           </ul>
         </div>
       )}
-    </section>
+    </article>
   );
 }
