@@ -1,4 +1,4 @@
-//! Claude Code adapter.
+//! Claude CLI adapter (the `claude` binary, Claude Code).
 //!
 //! File: `$CLAUDE_CONFIG_DIR/settings.json` (default `~/.claude/settings.json`;
 //! the pre-1.0 `claude.json` is used when it is the only one present).
@@ -116,7 +116,7 @@ impl Adapter for ClaudeAdapter {
         ClientId::Claude
     }
     fn display_name(&self) -> &'static str {
-        "Claude Code"
+        "Claude CLI"
     }
     fn protocol(&self) -> &'static str {
         "anthropic"

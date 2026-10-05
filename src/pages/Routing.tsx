@@ -18,7 +18,7 @@ export function Routing({ mode, onChange }: { mode: RouteMode; onChange: (mode: 
         <section className="panel">
           <h2 className="panel__solo">当前策略</h2>
           <p className="panel__desc">{COPY[mode]}</p>
-          <p className="panel__desc">选中的模型仍通过现有适配器写进 Codex、Claude Code 和 Gemini CLI 的配置。</p>
+          <p className="panel__desc">选中的模型仍通过现有适配器写进 Codex、Claude、Gemini、Grok 和 OpenCode 的配置。</p>
         </section>
       </div>
     </div>

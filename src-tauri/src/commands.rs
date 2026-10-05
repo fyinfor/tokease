@@ -4,7 +4,7 @@ use serde::Serialize;
 use tauri::State;
 use tokease_core::api::{ClientConfig, DeviceStart};
 use tokease_core::service::{BackupSummary, LoginPoll};
-use tokease_core::{ClientId, ClientStatus, Error, SessionInfo, Tokease};
+use tokease_core::{ChatSession, ChatTranscript, ClientId, ClientStatus, Error, SessionInfo, Tokease};
 
 type Core<'a> = State<'a, Arc<Tokease>>;
 
@@ -136,4 +136,14 @@ pub async fn get_platform_config(core: Core<'_>) -> CmdResult<Option<ClientConfi
 #[tauri::command]
 pub async fn refresh_platform_config(core: Core<'_>) -> CmdResult<ClientConfig> {
     Ok(core.refresh_platform_config().await?)
+}
+
+#[tauri::command]
+pub async fn list_chat_sessions(core: Core<'_>) -> CmdResult<Vec<ChatSession>> {
+    blocking(&core, |c| Ok(c.list_chat_sessions())).await
+}
+
+#[tauri::command]
+pub async fn read_chat_session(core: Core<'_>, id: String) -> CmdResult<ChatTranscript> {
+    blocking(&core, move |c| c.read_chat_session(&id)).await
 }

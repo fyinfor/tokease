@@ -1,6 +1,6 @@
 [package]
 name = "tokease-core"
-description = "Tokease local adapters: detect / backup / apply / validate / restore for Codex, Claude Code and Gemini CLI"
+description = "Tokease local adapters: detect / backup / apply / validate / restore for Codex, Claude CLI, Claude Desktop, Gemini CLI, Grok and OpenCode"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -28,6 +28,7 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "std"
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 keyring = { version = "3", features = ["apple-native", "windows-native", "async-secret-service", "tokio", "crypto-rust"] }
 url = "2"
+rusqlite = "0.32"
 
 # CLI only
 clap = { version = "4", features = ["derive", "env"] }

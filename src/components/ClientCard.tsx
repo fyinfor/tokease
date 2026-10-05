@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ClientId, ClientStatus } from "../lib/types";
 import { errorText } from "../lib/types";
-import { MarkClaude, MarkCodex, MarkGemini } from "./icons";
+import { MarkClaude, MarkCodex, MarkGemini, MarkGrok, MarkOpenCode } from "./icons";
 
 interface Props {
   client: ClientStatus;
@@ -9,15 +9,19 @@ interface Props {
   onEnable: () => Promise<void>;
   onRestore: () => Promise<void>;
   onNeedLogin: () => void;
+  onSessions: () => void;
 }
 
-const META: Record<ClientId, { vendor: string; mark: typeof MarkCodex }> = {
-  codex: { vendor: "OpenAI", mark: MarkCodex },
-  claude: { vendor: "Anthropic", mark: MarkClaude },
-  gemini: { vendor: "Google", mark: MarkGemini },
+const META: Record<ClientId, { vendor: string; kind: string; mark: typeof MarkCodex }> = {
+  codex: { vendor: "OpenAI", kind: "CLI", mark: MarkCodex },
+  claude: { vendor: "Anthropic", kind: "CLI", mark: MarkClaude },
+  "claude-desktop": { vendor: "Anthropic", kind: "Desktop", mark: MarkClaude },
+  gemini: { vendor: "Google", kind: "CLI", mark: MarkGemini },
+  grok: { vendor: "xAI", kind: "CLI", mark: MarkGrok },
+  opencode: { vendor: "OpenCode", kind: "CLI", mark: MarkOpenCode },
 };
 
-export function ClientCard({ client, loggedIn, onEnable, onRestore, onNeedLogin }: Props) {
+export function ClientCard({ client, loggedIn, onEnable, onRestore, onNeedLogin, onSessions }: Props) {
   const [busy, setBusy] = useState<"enable" | "restore" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
@@ -63,7 +67,7 @@ export function ClientCard({ client, loggedIn, onEnable, onRestore, onNeedLogin 
         <div className="tool__copy">
           <div className="tool__title">
             <h2>{client.name}</h2>
-            <span className="tag">CLI</span>
+            <span className="tag">{meta.kind}</span>
             <span className="tag tag--vendor">{meta.vendor}</span>
           </div>
           <p>{hint}</p>
@@ -84,6 +88,9 @@ export function ClientCard({ client, loggedIn, onEnable, onRestore, onNeedLogin 
             </button>
             <button type="button" className="btn btn--quiet" disabled={!canRestore} onClick={() => run("restore", onRestore, "已恢复原配置")}>
               {busy === "restore" ? <span className="spinner" /> : "恢复原配置"}
+            </button>
+            <button type="button" className="btn btn--quiet" onClick={onSessions}>
+              会话记录
             </button>
           </div>
           {flash && <span className="flash">{flash}</span>}

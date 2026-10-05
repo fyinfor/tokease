@@ -1,11 +1,11 @@
-import { IconPhone, IconSend, MarkClaude, MarkCodex, MarkGemini } from "../components/icons";
+import { IconPhone, IconSend, MarkClaude, MarkCodex, MarkGemini, MarkGrok, MarkOpenCode } from "../components/icons";
 
 export function Tasks() {
   return (
     <div className="subpage">
       <header className="pagehead">
         <h1>任务</h1>
-        <p>手机发来的任务会在这台电脑上执行，并调用已启用的 Codex、Claude Code 或 Gemini CLI。</p>
+        <p>手机发来的任务会在这台电脑上执行，并调用已启用的 Codex、Claude、Gemini、Grok 或 OpenCode。</p>
       </header>
       <section className="panel task-empty">
         <span className="dock__plane" aria-hidden>
@@ -30,6 +30,14 @@ export function Tasks() {
           <span className="flow flow--static">
             <MarkGemini size={12} />
             Gemini
+          </span>
+          <span className="flow flow--static">
+            <MarkGrok size={12} />
+            Grok
+          </span>
+          <span className="flow flow--static">
+            <MarkOpenCode size={12} />
+            OpenCode
           </span>
         </div>
       </section>

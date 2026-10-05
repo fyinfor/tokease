@@ -8,8 +8,11 @@
 //! means implementing a handful of small methods, see [`Adapter`].
 
 pub mod claude;
+pub mod claude_desktop;
 pub mod codex;
 pub mod gemini;
+pub mod grok;
+pub mod opencode;
 pub(crate) mod locate;
 
 use std::fmt;
@@ -26,17 +29,33 @@ use crate::fsutil;
 pub enum ClientId {
     Codex,
     Claude,
+    /// Claude Desktop 3P profile. `rename_all` would collapse this to
+    /// `claudedesktop`, which is not the id the UI and backups use.
+    #[serde(rename = "claude-desktop")]
+    ClaudeDesktop,
     Gemini,
+    Grok,
+    OpenCode,
 }
 
 impl ClientId {
-    pub const ALL: [ClientId; 3] = [ClientId::Codex, ClientId::Claude, ClientId::Gemini];
+    pub const ALL: [ClientId; 6] = [
+        ClientId::Codex,
+        ClientId::Claude,
+        ClientId::ClaudeDesktop,
+        ClientId::Gemini,
+        ClientId::Grok,
+        ClientId::OpenCode,
+    ];
 
     pub fn as_str(&self) -> &'static str {
         match self {
             ClientId::Codex => "codex",
             ClientId::Claude => "claude",
+            ClientId::ClaudeDesktop => "claude-desktop",
             ClientId::Gemini => "gemini",
+            ClientId::Grok => "grok",
+            ClientId::OpenCode => "opencode",
         }
     }
 
@@ -265,7 +284,10 @@ pub fn all() -> Vec<Box<dyn Adapter>> {
     vec![
         Box::new(codex::CodexAdapter::default()),
         Box::new(claude::ClaudeAdapter::default()),
+        Box::new(claude_desktop::ClaudeDesktopAdapter::default()),
         Box::new(gemini::GeminiAdapter::default()),
+        Box::new(grok::GrokAdapter::default()),
+        Box::new(opencode::OpenCodeAdapter::default()),
     ]
 }
 

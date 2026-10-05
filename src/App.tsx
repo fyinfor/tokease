@@ -12,9 +12,10 @@ import { Advanced } from "./pages/Advanced";
 import { Home } from "./pages/Home";
 import { Models } from "./pages/Models";
 import { Routing } from "./pages/Routing";
+import { Sessions } from "./pages/Sessions";
 import { Tasks } from "./pages/Tasks";
 
-type Page = "home" | "models" | "routing" | "tasks" | "advanced";
+type Page = "home" | "models" | "sessions" | "routing" | "tasks" | "advanced";
 
 const NAV: { id: Page; label: string; icon: typeof IconHome }[] = [
   { id: "home", label: "首页", icon: IconHome },
@@ -47,6 +48,7 @@ export default function App() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [maximized, setMaximized] = useState(false);
+  const [sessionClient, setSessionClient] = useState<ClientStatus["id"] | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -239,7 +241,7 @@ export default function App() {
         <nav className="side" aria-label="主导航">
           {NAV.map((item) => {
             const Icon = item.icon;
-            const on = page === item.id;
+            const on = item.id === "home" ? page === "home" || page === "sessions" : page === item.id;
             return (
               <button key={item.id} type="button" className={on ? "navbtn navbtn--on" : "navbtn"} aria-current={on ? "page" : undefined} onClick={() => setPage(item.id)}>
                 <Icon size={18} />
@@ -259,9 +261,22 @@ export default function App() {
               <span className="spinner" />
             </div>
           ) : page === "home" ? (
-            <Home session={session} clients={clients} routeMode={routeMode} onRouteMode={setRouteMode} onClient={onClient} onNeedLogin={openLogin} />
+            <Home
+              session={session}
+              clients={clients}
+              routeMode={routeMode}
+              onRouteMode={setRouteMode}
+              onClient={onClient}
+              onNeedLogin={openLogin}
+              onSessions={(id) => {
+                setSessionClient(id);
+                setPage("sessions");
+              }}
+            />
           ) : page === "models" ? (
             <Models session={session} clients={clients} onNeedLogin={openLogin} />
+          ) : page === "sessions" && sessionClient ? (
+            <Sessions key={sessionClient} clientId={sessionClient} clients={clients} onBack={() => setPage("home")} />
           ) : page === "routing" ? (
             <Routing mode={routeMode} onChange={setRouteMode} />
           ) : page === "tasks" ? (

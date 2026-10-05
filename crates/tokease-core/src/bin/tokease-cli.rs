@@ -38,7 +38,8 @@ enum Cmd {
         password: Option<String>,
     },
     Logout,
-    /// One-click enable Tokease for a client (codex | claude | gemini).
+    /// One-click enable Tokease for a client
+    /// (codex | claude | claude-desktop | gemini | grok | opencode).
     Enable {
         client: String,
     },
@@ -58,7 +59,9 @@ enum Cmd {
 
 fn parse_client(s: &str) -> ClientId {
     ClientId::parse(s).unwrap_or_else(|| {
-        eprintln!("unknown client {s:?}; expected codex | claude | gemini");
+        eprintln!(
+            "unknown client {s:?}; expected codex | claude | claude-desktop | gemini | grok | opencode"
+        );
         std::process::exit(2)
     })
 }

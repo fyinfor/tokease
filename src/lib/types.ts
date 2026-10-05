@@ -1,6 +1,6 @@
 // Mirrors the serde shapes in crates/tokease-core (service.rs / api.rs).
 
-export type ClientId = "codex" | "claude" | "gemini";
+export type ClientId = "codex" | "claude" | "claude-desktop" | "gemini" | "grok" | "opencode";
 
 export interface UserInfo {
   id: string;
@@ -82,6 +82,29 @@ export type LoginPoll =
   | { status: "authorized"; session: SessionInfo }
   | { status: "expired" }
   | { status: "denied" };
+
+export interface ChatSession {
+  id: string;
+  client: ClientId;
+  title: string;
+  model: string | null;
+  cwd: string | null;
+  updated_at: string | null;
+  message_count: number | null;
+}
+
+export interface ChatMessage {
+  role: string;
+  text: string;
+  at: string | null;
+}
+
+export interface ChatTranscript {
+  session: ChatSession;
+  messages: ChatMessage[];
+  truncated: boolean;
+  missing_file: boolean;
+}
 
 export interface BackupSummary {
   id: string;

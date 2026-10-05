@@ -11,9 +11,10 @@ interface Props {
   onRouteMode: (mode: RouteMode) => void;
   onClient: (c: ClientStatus) => void;
   onNeedLogin: () => void;
+  onSessions: (id: ClientId) => void;
 }
 
-export function Home({ session, clients, routeMode, onRouteMode, onClient, onNeedLogin }: Props) {
+export function Home({ session, clients, routeMode, onRouteMode, onClient, onNeedLogin, onSessions }: Props) {
   const act = (id: ClientId, kind: "enable" | "restore") => async () => {
     const a = await api();
     const c = kind === "enable" ? await a.enableClient(id) : await a.restoreClient(id);
@@ -36,6 +37,7 @@ export function Home({ session, clients, routeMode, onRouteMode, onClient, onNee
               onEnable={act(c.id, "enable")}
               onRestore={act(c.id, "restore")}
               onNeedLogin={onNeedLogin}
+              onSessions={() => onSessions(c.id)}
             />
           ))}
         </div>

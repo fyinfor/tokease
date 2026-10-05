@@ -1,6 +1,6 @@
 # Tokease Desktop
 
-轻量级桌面 Connector：登录 Tokease，点一下「一键启用」，本地的 **Codex CLI / Claude Code / Gemini CLI** 就接到 Tokease 聚合 API 上。用户不需要知道 Base URL、API Key、Provider、模型 ID 或配置文件在哪。
+轻量级桌面 Connector：登录 Tokease，点一下「一键启用」，本地的 **Codex CLI / Claude CLI / Claude Desktop / Gemini CLI / Grok / OpenCode** 就接到 Tokease 聚合 API 上。用户不需要知道 Base URL、API Key、Provider、模型 ID 或配置文件在哪。
 
 ```
 安装 Tokease → 登录 → 点「启用 Codex」→ 完成
@@ -28,7 +28,7 @@ tokease/
 │  ├─ tauri.conf.json
 │  └─ capabilities/default.json
 ├─ crates/tokease-core/        Rust 核心库（不依赖 Tauri，可单独测试）
-│  ├─ src/adapters/            codex.rs / claude.rs / gemini.rs + 公共 trait
+│  ├─ src/adapters/            codex / claude / claude_desktop / gemini / grok / opencode + 公共 trait
 │  │  └─ locate.rs             找 CLI 可执行文件（含登录 shell 的 PATH）、读版本
 │  ├─ src/floor.rs             关键字段定义（移植自 CC Switch live/floor.rs）
 │  ├─ src/patch/               保序补丁器：json.rs / dotenv.rs / toml.rs
@@ -112,7 +112,7 @@ pnpm cli -- backups codex
 CLI 和桌面端共用 `~/.tokease`（`TOKEASE_DATA_DIR` 可覆盖）。本地测试不想碰真实配置时：
 
 ```sh
-export HOME=/tmp/fakehome CODEX_HOME=/tmp/fakehome/.codex CLAUDE_CONFIG_DIR=/tmp/fakehome/.claude TOKEASE_DATA_DIR=/tmp/fakehome/.tokease
+export HOME=/tmp/fakehome CODEX_HOME=/tmp/fakehome/.codex CLAUDE_CONFIG_DIR=/tmp/fakehome/.claude GROK_HOME=/tmp/fakehome/.grok XDG_CONFIG_HOME=/tmp/fakehome/.config TOKEASE_DATA_DIR=/tmp/fakehome/.tokease
 ```
 
 ## 各客户端写了什么
@@ -123,13 +123,17 @@ export HOME=/tmp/fakehome CODEX_HOME=/tmp/fakehome/.codex CLAUDE_CONFIG_DIR=/tmp
 |---|---|---|---|
 | Codex CLI（≥ 0.149） | `~/.codex/config.toml` | 顶层 `model_provider`、`openai_base_url`、`model`、`review_model`、`disable_response_storage`、`experimental_bearer_token`、`base_url`、`wire_api`；嵌套的 `agents.default_subagent_model`、`memories.extract_model`、`memories.consolidation_model`；保留 id（`openai`/`ollama`/`lmstudio`）的 provider 表改名为 `<id>-legacy`（Codex 0.148+ 遇到会拒绝加载） | `model_provider = "tokease"`、`model`、`disable_response_storage = true`、`model_reasoning_effort = "high"`（仅缺失时补）、`[model_providers.tokease]`：`name`、`base_url`、`wire_api`、`experimental_bearer_token = <token>`、`requires_openai_auth = <auth.json 里是否有登录>` |
 | | `~/.codex/auth.json` | **不读不写**（只用来判断是否存在 ChatGPT 登录） | — |
-| Claude Code | `~/.claude/settings.json`（仅有旧 `claude.json` 时用它） | 顶层 `apiKeyHelper`、`apiBaseUrl`、`apiKey`、`model`、`primaryModel`、`smallFastModel`、`fallbackModel`、`modelOverrides`、`advisorModel`、`awsAuthRefresh`、`awsCredentialExport`、`gcpAuthRefresh`；`env` 里的 `ANTHROPIC_*`、`AWS_*`、`VERTEX_REGION_*`、`CLAUDE_CODE_USE_BEDROCK/VERTEX/FOUNDRY/GATEWAY/MANTLE/…`、`CLAUDE_CODE_OAUTH_*`、`CLAUDE_CODE_SUBAGENT_MODEL*`、`CLAUDE_CODE_SKIP_*_AUTH`、`CLOUD_ML_REGION`、`GOOGLE_APPLICATION_CREDENTIALS` | `env.ANTHROPIC_BASE_URL`、`env.ANTHROPIC_AUTH_TOKEN`（只写这一个凭据键）、`env.ANTHROPIC_MODEL`、`env.ANTHROPIC_DEFAULT_OPUS_MODEL = code-best`、`…_SONNET_MODEL = code-fast`、`…_HAIKU_MODEL = code-cheap` |
+| Claude CLI | `~/.claude/settings.json`（仅有旧 `claude.json` 时用它） | 顶层 `apiKeyHelper`、`apiBaseUrl`、`apiKey`、`model`、`primaryModel`、`smallFastModel`、`fallbackModel`、`modelOverrides`、`advisorModel`、`awsAuthRefresh`、`awsCredentialExport`、`gcpAuthRefresh`；`env` 里的 `ANTHROPIC_*`、`AWS_*`、`VERTEX_REGION_*`、`CLAUDE_CODE_USE_BEDROCK/VERTEX/FOUNDRY/GATEWAY/MANTLE/…`、`CLAUDE_CODE_OAUTH_*`、`CLAUDE_CODE_SUBAGENT_MODEL*`、`CLAUDE_CODE_SKIP_*_AUTH`、`CLOUD_ML_REGION`、`GOOGLE_APPLICATION_CREDENTIALS` | `env.ANTHROPIC_BASE_URL`、`env.ANTHROPIC_AUTH_TOKEN`（只写这一个凭据键）、`env.ANTHROPIC_MODEL`、`env.ANTHROPIC_DEFAULT_OPUS_MODEL = code-best`、`…_SONNET_MODEL = code-fast`、`…_HAIKU_MODEL = code-cheap` |
+| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json`（Linux 为 `~/.config/Claude/`，Windows 为 `%LOCALAPPDATA%\Claude\`），以及旁边的 `Claude-3p/` | —（只改下面列出的键） | 两个 `claude_desktop_config.json` 的 `deploymentMode = "3p"`；`Claude-3p/configLibrary/00000000-0000-4000-8000-00000000e45e.json` 的网关地址、Bearer Token、三个角色模型（菜单名是逻辑模型）；`_meta.json` 的 `appliedId` 指向这份 profile，其它 profile 条目保留 |
 | Gemini CLI | `~/.gemini/.env` | `GOOGLE_*`、`GEMINI_API_KEY`、`GEMINI_MODEL`、`GEMINI_API_KEY_AUTH_MECHANISM`、`GEMINI_CLI_CUSTOM_HEADERS`、`GEMINI_DEFAULT_AUTH_TYPE`、`GEMINI_CLI_USE_COMPUTE_ADC`、`CODE_ASSIST_ENDPOINT`、`CODE_ASSIST_API_VERSION`（`GEMINI_SANDBOX` 等不是） | `GEMINI_API_KEY`、`GOOGLE_GEMINI_BASE_URL`、`GEMINI_MODEL` |
 | | `~/.gemini/settings.json` | — | `security.auth.selectedType = "gemini-api-key"`、`model.name` |
+| Grok | `~/.grok/config.toml`（`GROK_HOME` 可覆盖） | 只动 Tokease 自己的 `[model.tokease]`：清掉其中的 `env_key` | `[models].default = "tokease"`、`[model.tokease]` 的 `model`、`base_url`、`name`、`api_key`、`api_backend`（默认 `responses`）。其它模型表和 UI 设置保留 |
+| OpenCode | `~/.config/opencode/opencode.json`（仅有 `opencode.jsonc` 时用它；`$XDG_CONFIG_HOME` 可覆盖） | — | `provider.tokease`（`@ai-sdk/openai-compatible`、`options.baseURL`、`options.apiKey`、三个逻辑模型）、`model`、`small_model`。其它 provider 保留 |
 
 - Codex 若顶层 `profile` 指向的 `[profiles.<name>]` 设置了 `model_provider`（非 tokease）/ `openai_base_url` / `experimental_bearer_token`，会拒绝写入并指出是哪个 profile（否则请求不会到 Tokease）
 - Codex 的 `model_reasoning_effort` / `plan_mode_reasoning_effort` / `model_catalog_json` 视为用户偏好，保留不动
-- 路径遵循各工具自己的环境变量：`CODEX_HOME`、`CLAUDE_CONFIG_DIR`
+- 路径遵循各工具自己的环境变量：`CODEX_HOME`、`CLAUDE_CONFIG_DIR`、`GROK_HOME`、`XDG_CONFIG_HOME`（OpenCode 与 Linux 上的 Claude Desktop）
+- Claude Desktop 的模型菜单只接受 Opus / Sonnet / Haiku 角色 id。启用后菜单显示名是 `code-best` / `code-fast` / `code-cheap`，发给网关的模型 id 仍是 `claude-opus-5`、`claude-sonnet-4-6`、`claude-haiku-4-5`。改完需要完全退出再打开 Claude Desktop
 - 文件格式细节保留：JSON 的缩进（空格/Tab）、CRLF、BOM、末尾换行；`.env` 的注释、顺序、`export ` 前缀；TOML 的注释、行尾注释、表的位置、内联表形态
 
 ### 启用流程（每个 Adapter 一致）
@@ -151,7 +155,7 @@ detect() → plan()（只读：解析 → 补丁 → 新内容） → backup_con
 
 - 可执行文件查找：当前 PATH → 登录 shell 的 PATH（`$SHELL -lc /usr/bin/env`，桌面启动的 GUI 拿不到 nvm / volta / Homebrew 的 PATH）→ 常见安装目录（`~/.local/bin`、`~/.npm-global/bin`、`~/.volta/bin`、`%APPDATA%\npm` …）→ ChatGPT 桌面版自带的 `/usr/lib/chatgpt/resources/codex`
 - 读取 `--version`（带超时、按路径缓存）；Codex 低于 0.149 会在卡片上提示升级（`experimental_bearer_token` 从该版本起生效）
-- 环境变量冲突：扫描进程环境和 `~/.bashrc`、`~/.zshrc`、`~/.profile`、`~/.config/fish/config.fish` 等，发现 `ANTHROPIC_*`（Claude）、`OPENAI_API_KEY` / `OPENAI_BASE_URL`（Codex）、`GEMINI_API_KEY` / `GOOGLE_GEMINI_BASE_URL` / `GOOGLE_API_KEY`（Gemini）时提示用户自行清理（Tokease 不改 shell 文件，值只显示脱敏预览）
+- 环境变量冲突：扫描进程环境和 `~/.bashrc`、`~/.zshrc`、`~/.profile`、`~/.config/fish/config.fish` 等，发现 `ANTHROPIC_*`（Claude CLI）、`OPENAI_API_KEY` / `OPENAI_BASE_URL`（Codex）、`GEMINI_API_KEY` / `GOOGLE_GEMINI_BASE_URL` / `GOOGLE_API_KEY`（Gemini）、`XAI_API_KEY` / `GROK_DEFAULT_MODEL` / `GROK_XAI_API_BASE_URL` / `GROK_MODELS_BASE_URL`（Grok）时提示用户自行清理（Tokease 不改 shell 文件，值只显示脱敏预览）
 
 ## 新增一个客户端
 

@@ -37,6 +37,8 @@ pub fn run() {
             commands::list_backups,
             commands::get_platform_config,
             commands::refresh_platform_config,
+            commands::list_chat_sessions,
+            commands::read_chat_session,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Tokease");

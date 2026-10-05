@@ -434,6 +434,16 @@ impl Tokease {
         self.client_status(id)
     }
 
+    /// Conversations already stored by the local coding tools. Read-only.
+    pub fn list_chat_sessions(&self) -> Vec<crate::history::ChatSession> {
+        crate::history::list(&crate::history::HistoryRoots::detect())
+    }
+
+    pub fn read_chat_session(&self, id: &str) -> Result<crate::history::ChatTranscript> {
+        crate::history::read(&crate::history::HistoryRoots::detect(), id)
+            .ok_or_else(|| Error::Other(format!("找不到会话 {id}")))
+    }
+
     pub fn backups(&self, id: ClientId) -> Result<Vec<BackupSummary>> {
         Ok(self
             .backups

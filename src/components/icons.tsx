@@ -156,6 +156,25 @@ export function MarkClaude({ size = 22 }: { size?: number }) {
   );
 }
 
+export function MarkGrok({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
+      <path d="M4 6.2h10.2L8.4 18H4.2L4 6.2Z" fill="#f5f7ff" />
+      <path d="M13.2 6.2H20L14.2 18h-4.2l3.2-11.8Z" fill="#27d8ff" />
+    </svg>
+  );
+}
+
+export function MarkOpenCode({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
+      <path d="M8.2 7.2 3.6 12l4.6 4.8-1.5 1.5L1 12l5.7-6.3 1.5 1.5Z" fill="#28e3a2" />
+      <path d="M15.8 7.2 20.4 12l-4.6 4.8 1.5 1.5L23 12l-5.7-6.3-1.5 1.5Z" fill="#28e3a2" />
+      <path d="m13.6 4.4-3.2 15.2h-1.7L11.9 4.4h1.7Z" fill="#f5f7ff" />
+    </svg>
+  );
+}
+
 export function MarkGemini({ size = 22 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>

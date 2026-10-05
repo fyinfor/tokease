@@ -4,6 +4,8 @@
 
 import type {
   BackupSummary,
+  ChatSession,
+  ChatTranscript,
   ClientConfig,
   ClientId,
   ClientStatus,
@@ -27,6 +29,8 @@ type Api = {
   listBackups(id: ClientId): Promise<BackupSummary[]>;
   getPlatformConfig(): Promise<ClientConfig | null>;
   refreshPlatformConfig(): Promise<ClientConfig>;
+  listChatSessions(): Promise<ChatSession[]>;
+  readChatSession(id: string): Promise<ChatTranscript>;
   openUrl(url: string): Promise<void>;
   revealPath(path: string): Promise<void>;
 };
@@ -47,6 +51,8 @@ async function tauriApi(): Promise<Api> {
     listBackups: (id) => invoke("list_backups", { id }),
     getPlatformConfig: () => invoke("get_platform_config"),
     refreshPlatformConfig: () => invoke("refresh_platform_config"),
+    listChatSessions: () => invoke("list_chat_sessions"),
+    readChatSession: (id) => invoke("read_chat_session", { id }),
     openUrl: (url) => opener.openUrl(url),
     revealPath: (path) => opener.revealItemInDir(path),
   };
@@ -74,15 +80,37 @@ function mockApi(): Api {
       { id: "code-cheap", name: "经济编程" },
     ],
     default_model: "code-best",
-    clients: { codex: { enabled: true }, claude: { enabled: true }, gemini: { enabled: true } },
+    clients: { codex: { enabled: true }, claude: { enabled: true }, "claude-desktop": { enabled: true }, gemini: { enabled: true }, grok: { enabled: true }, opencode: { enabled: true } },
   };
   const base = { available: true, enabled: false, problems: [], env_conflicts: [], enabled_at: null, backup_id: null, min_version: null, outdated: false };
   const clients: ClientStatus[] = [
     { ...base, id: "codex", name: "Codex CLI", installed: true, binary_path: "/usr/local/bin/codex", version: "codex-cli 0.160.0", min_version: "0.149.0", config_dir: "~/.codex", managed_files: ["~/.codex/config.toml"], current: { base_url: null, model: "gpt-5", has_credential: true } },
-    { ...base, id: "claude", name: "Claude Code", installed: true, binary_path: "/usr/local/bin/claude", version: "2.1.29 (Claude Code)", config_dir: "~/.claude", managed_files: ["~/.claude/settings.json"], current: { base_url: null, model: null, has_credential: false }, env_conflicts: [{ name: "ANTHROPIC_BASE_URL", source: "~/.zshrc", preview: "http…mple (23 chars)" }] },
+    { ...base, id: "claude", name: "Claude CLI", installed: true, binary_path: "/usr/local/bin/claude", version: "2.1.29 (Claude Code)", config_dir: "~/.claude", managed_files: ["~/.claude/settings.json"], current: { base_url: null, model: null, has_credential: false }, env_conflicts: [{ name: "ANTHROPIC_BASE_URL", source: "~/.zshrc", preview: "http…mple (23 chars)" }] },
+    { ...base, id: "claude-desktop", name: "Claude Desktop", installed: true, binary_path: null, version: null, config_dir: "~/.config/Claude", managed_files: ["~/.config/Claude-3p/configLibrary/_meta.json"], current: { base_url: null, model: null, has_credential: false } },
     { ...base, id: "gemini", name: "Gemini CLI", installed: false, binary_path: null, version: null, config_dir: "~/.gemini", managed_files: ["~/.gemini/.env", "~/.gemini/settings.json"], current: { base_url: null, model: null, has_credential: false } },
+    { ...base, id: "grok", name: "Grok", installed: true, binary_path: "/usr/local/bin/grok", version: "0.1.0", config_dir: "~/.grok", managed_files: ["~/.grok/config.toml"], current: { base_url: null, model: null, has_credential: false } },
+    { ...base, id: "opencode", name: "OpenCode", installed: false, binary_path: null, version: null, config_dir: "~/.config/opencode", managed_files: ["~/.config/opencode/opencode.json"], current: { base_url: null, model: null, has_credential: false } },
   ];
-  const backups: Record<string, BackupSummary[]> = { codex: [], claude: [], gemini: [] };
+  const backups: Record<string, BackupSummary[]> = { codex: [], claude: [], "claude-desktop": [], gemini: [], grok: [], opencode: [] };
+  const chats: ChatSession[] = [
+    { id: "codex:1", client: "codex", title: "把窗口圆角在最大化后贴齐屏幕", model: "code-best", cwd: "/home/aipanda/product/tokease", updated_at: "2026-10-05T10:20:00Z", message_count: 4 },
+    { id: "claude:1", client: "claude", title: "拆开 Claude CLI 和 Desktop", model: "code-fast", cwd: "/home/aipanda/product/tokease", updated_at: "2026-10-04T08:00:00Z", message_count: 2 },
+    { id: "opencode:1", client: "opencode", title: "补上 Grok 和 OpenCode", model: "code-cheap", cwd: "/home/aipanda/product/tokease", updated_at: "2026-10-03T03:10:00Z", message_count: 2 },
+  ];
+  const transcripts: Record<string, ChatTranscript> = {
+    "codex:1": { session: chats[0], truncated: false, missing_file: false, messages: [
+      { role: "user", text: "最大化后窗口没有贴着屏幕。", at: "2026-10-05T10:18:00Z" },
+      { role: "assistant", text: "最大化时去掉外边距和圆角，还原时再加回来。", at: "2026-10-05T10:19:00Z" },
+    ] },
+    "claude:1": { session: chats[1], truncated: false, missing_file: false, messages: [
+      { role: "user", text: "Claude 分成 CLI 和 Desktop。", at: "2026-10-04T08:00:00Z" },
+      { role: "assistant", text: "CLI 继续写 settings.json，Desktop 写 3P profile。", at: "2026-10-04T08:01:00Z" },
+    ] },
+    "opencode:1": { session: chats[2], truncated: false, missing_file: false, messages: [
+      { role: "user", text: "再补 Grok 和 OpenCode。", at: "2026-10-03T03:10:00Z" },
+      { role: "assistant", text: "Grok 写 config.toml，OpenCode 写 opencode.json。", at: "2026-10-03T03:11:00Z" },
+    ] },
+  };
   const err = (kind: string, message: string) => Promise.reject({ kind, message });
   const login = (): SessionInfo => (session = { ...session, logged_in: true, user: { id: "u_demo", email: "demo@tokease.com", name: "Demo" }, storage_backend: "keychain", token_preview: "tk_l…bb59 (44 chars)" });
   let pollCount = 0;
@@ -104,7 +132,8 @@ function mockApi(): Api {
       if (!c.installed) return err("not_installed", `${c.name} is not installed`);
       const bid = new Date().toISOString().replace(/[-:T]/g, "").slice(0, 15);
       backups[id].unshift({ id: bid, created_at: new Date().toISOString(), dir: `${session.data_dir}/backups/${id}/${bid}`, files: c.managed_files });
-      Object.assign(c, { enabled: true, enabled_at: new Date().toISOString(), backup_id: c.backup_id ?? bid, current: { base_url: config.endpoints[id === "codex" ? "openai" : id === "claude" ? "anthropic" : "gemini"], model: config.default_model, has_credential: true } });
+      const protocol = id === "gemini" ? "gemini" : id === "claude" || id === "claude-desktop" ? "anthropic" : "openai";
+      Object.assign(c, { enabled: true, enabled_at: new Date().toISOString(), backup_id: c.backup_id ?? bid, current: { base_url: config.endpoints[protocol], model: config.default_model, has_credential: true } });
       return { ...c };
     },
     restoreClient: async (id) => {
@@ -117,6 +146,8 @@ function mockApi(): Api {
     listBackups: async (id) => backups[id],
     getPlatformConfig: async () => (session.logged_in ? config : null),
     refreshPlatformConfig: async () => (session.logged_in ? config : err("not_logged_in", "not logged in")),
+    listChatSessions: async () => chats.map((c) => ({ ...c })),
+    readChatSession: async (id) => transcripts[id] ?? err("other", "找不到这场会话"),
     openUrl: async (url) => void window.open(url, "_blank"),
     revealPath: async (p) => alert(`(mock) reveal ${p}`),
   };
