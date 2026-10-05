@@ -4,7 +4,7 @@ export function Tasks() {
   return (
     <div className="subpage">
       <header className="pagehead">
-        <h1>任务</h1>
+        <h1>任务管理</h1>
         <p>手机发来的任务会在这台电脑上执行，并调用已启用的 Codex、Claude、Gemini、Grok 或 OpenCode。</p>
       </header>
       <section className="panel task-empty">

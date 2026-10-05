@@ -401,7 +401,7 @@ ul { margin: 0; padding: 0; list-style: none; }
 .btn:hover:not(:disabled) { filter: brightness(1.06); }
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn:disabled { cursor: not-allowed; }
-.btn:focus-visible, .navbtn:focus-visible, .search:focus-visible, .mode:focus-visible, .who:focus-visible, .avatar:focus-visible, .wins button:focus-visible {
+.btn:focus-visible, .navbtn:focus-visible, .search:focus-visible, .who:focus-visible, .avatar:focus-visible, .wins button:focus-visible {
   outline: 2px solid rgba(90, 150, 255, 0.85);
   outline-offset: 2px;
 }
@@ -455,34 +455,6 @@ ul { margin: 0; padding: 0; list-style: none; }
   border: 1px solid rgba(37, 228, 170, 0.24);
   font-size: 11px;
 }
-.modes {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-.mode {
-  aspect-ratio: 0.92;
-  border-radius: 12px;
-  border: 1px solid rgba(111, 140, 195, 0.25);
-  background: rgba(14, 25, 43, 0.82);
-  color: #e7eef8;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 3px;
-  padding: 8px 4px;
-}
-.mode strong { font-size: 13px; font-weight: 650; }
-.mode span { font-size: 11px; color: var(--muted); }
-.mode--on {
-  color: var(--text);
-  border-color: var(--cyan);
-  background: linear-gradient(145deg, rgba(20, 89, 196, 0.34), rgba(7, 30, 73, 0.86));
-  box-shadow: 0 0 23px rgba(15, 150, 255, 0.24), inset 0 0 20px rgba(16, 131, 255, 0.13);
-}
-.mode--on span { color: var(--muted); }
-
 .phone { display: flex; gap: 12px; align-items: center; }
 .qr {
   width: 92px;

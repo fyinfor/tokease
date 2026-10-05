@@ -39,13 +39,12 @@ export function IconCube(p: IconProps) {
   );
 }
 
-export function IconNodes(p: IconProps) {
+export function IconSkill(p: IconProps) {
   return (
     <Svg {...p}>
-      <circle cx="6" cy="7" r="2.2" stroke="currentColor" strokeWidth="1.7" />
-      <circle cx="17.5" cy="6.5" r="2.2" stroke="currentColor" strokeWidth="1.7" />
-      <circle cx="12" cy="17" r="2.2" stroke="currentColor" strokeWidth="1.7" />
-      <path d="M8 8.2 15.4 7.2M7.4 8.8l3.2 6.2M15.6 8.4 13.4 15" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="M8 4.5h8.2A1.8 1.8 0 0 1 18 6.3V20H8.2A2.2 2.2 0 0 1 6 17.8V6.7A2.2 2.2 0 0 1 8 4.5Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+      <path d="M8 4.5v13.2A2.2 2.2 0 0 1 6 20" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M10.2 9h5M10.2 12.5h3.6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
     </Svg>
   );
 }
@@ -89,32 +88,6 @@ export function IconClose(p: IconProps) {
   return (
     <Svg {...p}>
       <path d="M7 7l10 10M17 7 7 17" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-    </Svg>
-  );
-}
-
-export function IconBolt(p: IconProps) {
-  return (
-    <Svg {...p} size={p.size ?? 22}>
-      <path d="M13 3.5 6.5 13.2h5.2L10.2 20.5 17.5 10.2h-5.1L13 3.5Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-    </Svg>
-  );
-}
-
-export function IconGlobe(p: IconProps) {
-  return (
-    <Svg {...p} size={p.size ?? 22}>
-      <circle cx="12" cy="12" r="7.2" stroke="currentColor" strokeWidth="1.6" />
-      <path d="M4.8 12h14.4M12 4.8c2 2.2 3 4.6 3 7.2s-1 5-3 7.2c-2-2.2-3-4.6-3-7.2s1-5 3-7.2Z" stroke="currentColor" strokeWidth="1.6" />
-    </Svg>
-  );
-}
-
-export function IconStack(p: IconProps) {
-  return (
-    <Svg {...p} size={p.size ?? 22}>
-      <path d="M12 4.2 19 8 12 11.8 5 8l7-3.8Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-      <path d="M5 12 12 15.8 19 12M5 16l7 3.8L19 16" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
     </Svg>
   );
 }

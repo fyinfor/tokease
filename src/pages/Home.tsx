@@ -1,20 +1,17 @@
 import { ClientCard } from "../components/ClientCard";
 import { PhonePanel } from "../components/PhonePanel";
-import { RoutePanel, type RouteMode } from "../components/RoutePanel";
 import { api } from "../lib/bridge";
 import type { ClientId, ClientStatus, SessionInfo } from "../lib/types";
 
 interface Props {
   session: SessionInfo;
   clients: ClientStatus[];
-  routeMode: RouteMode;
-  onRouteMode: (mode: RouteMode) => void;
   onClient: (c: ClientStatus) => void;
   onNeedLogin: () => void;
   onSessions: (id: ClientId) => void;
 }
 
-export function Home({ session, clients, routeMode, onRouteMode, onClient, onNeedLogin, onSessions }: Props) {
+export function Home({ session, clients, onClient, onNeedLogin, onSessions }: Props) {
   const act = (id: ClientId, kind: "enable" | "restore") => async () => {
     const a = await api();
     const c = kind === "enable" ? await a.enableClient(id) : await a.restoreClient(id);
@@ -43,7 +40,6 @@ export function Home({ session, clients, routeMode, onRouteMode, onClient, onNee
         </div>
       </section>
       <aside className="home__side">
-        <RoutePanel mode={routeMode} onChange={onRouteMode} />
         <PhonePanel />
       </aside>
     </div>

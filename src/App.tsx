@@ -1,27 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CommandPalette, type PaletteItem } from "./components/CommandPalette";
-import { IconClose, IconCube, IconHome, IconMinus, IconNodes, IconSearch, IconSquare, IconTasks, IconUser } from "./components/icons";
+import { IconClose, IconCube, IconHome, IconMinus, IconSearch, IconSkill, IconSquare, IconTasks, IconUser } from "./components/icons";
 import { LoginPanel } from "./components/LoginPanel";
 import { Logo } from "./components/Logo";
 import { TaskDock } from "./components/TaskDock";
-import type { RouteMode } from "./components/RoutePanel";
 import { isTauri, api } from "./lib/bridge";
 import type { ClientStatus, SessionInfo } from "./lib/types";
 import { errorText } from "./lib/types";
 import { Advanced } from "./pages/Advanced";
 import { Home } from "./pages/Home";
 import { Models } from "./pages/Models";
-import { Routing } from "./pages/Routing";
 import { Sessions } from "./pages/Sessions";
+import { Skills } from "./pages/Skills";
 import { Tasks } from "./pages/Tasks";
 
-type Page = "home" | "models" | "sessions" | "routing" | "tasks" | "advanced";
+type Page = "home" | "models" | "sessions" | "skills" | "tasks" | "advanced";
 
 const NAV: { id: Page; label: string; icon: typeof IconHome }[] = [
   { id: "home", label: "首页", icon: IconHome },
   { id: "models", label: "模型切换", icon: IconCube },
-  { id: "routing", label: "智能路由", icon: IconNodes },
-  { id: "tasks", label: "任务", icon: IconTasks },
+  { id: "skills", label: "Skill管理", icon: IconSkill },
+  { id: "tasks", label: "任务管理", icon: IconTasks },
 ];
 
 async function withWindow(
@@ -42,7 +41,6 @@ export default function App() {
   const [session, setSession] = useState<SessionInfo | null>(null);
   const [clients, setClients] = useState<ClientStatus[]>([]);
   const [fatal, setFatal] = useState<string | null>(null);
-  const [routeMode, setRouteMode] = useState<RouteMode>("local");
   const [loginOpen, setLoginOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -264,8 +262,6 @@ export default function App() {
             <Home
               session={session}
               clients={clients}
-              routeMode={routeMode}
-              onRouteMode={setRouteMode}
               onClient={onClient}
               onNeedLogin={openLogin}
               onSessions={(id) => {
@@ -277,8 +273,8 @@ export default function App() {
             <Models session={session} clients={clients} onNeedLogin={openLogin} />
           ) : page === "sessions" && sessionClient ? (
             <Sessions key={sessionClient} clientId={sessionClient} clients={clients} onBack={() => setPage("home")} />
-          ) : page === "routing" ? (
-            <Routing mode={routeMode} onChange={setRouteMode} />
+          ) : page === "skills" ? (
+            <Skills />
           ) : page === "tasks" ? (
             <Tasks />
           ) : (
