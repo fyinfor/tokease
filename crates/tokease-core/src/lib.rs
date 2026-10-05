@@ -11,6 +11,7 @@
 
 pub mod adapters;
 pub mod history;
+pub mod skills;
 pub mod api;
 pub mod backup;
 pub mod envcheck;
@@ -27,6 +28,7 @@ pub use adapters::{Adapter, ClientId, ConnectionSpec, Detection, Validation};
 pub use api::{ClientConfig, ModelInfo, UserInfo};
 pub use error::{Error, Result};
 pub use history::{ChatMessage, ChatSession, ChatTranscript};
+pub use skills::LocalSkill;
 pub use service::{ClientStatus, SessionInfo, Tokease};
 
 /// Default Tokease API server. Auth endpoints (`/auth/*`, `/client/config`)

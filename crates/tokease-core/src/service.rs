@@ -434,6 +434,11 @@ impl Tokease {
         self.client_status(id)
     }
 
+    /// Skills already installed for the local coding tools. Read-only.
+    pub fn list_skills(&self) -> Vec<crate::skills::LocalSkill> {
+        crate::skills::list()
+    }
+
     /// Conversations already stored by the local coding tools. Read-only.
     pub fn list_chat_sessions(&self) -> Vec<crate::history::ChatSession> {
         crate::history::list(&crate::history::HistoryRoots::detect())

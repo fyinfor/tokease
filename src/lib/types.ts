@@ -83,6 +83,15 @@ export type LoginPoll =
   | { status: "expired" }
   | { status: "denied" };
 
+export interface LocalSkill {
+  id: string;
+  name: string;
+  description: string;
+  source: "agents" | "codex" | "claude" | "cursor" | string;
+  kind: "user" | "system" | "plugin" | string;
+  path: string;
+}
+
 export interface ChatSession {
   id: string;
   client: ClientId;

@@ -5,6 +5,7 @@
 import type {
   BackupSummary,
   ChatSession,
+  LocalSkill,
   ChatTranscript,
   ClientConfig,
   ClientId,
@@ -29,6 +30,7 @@ type Api = {
   listBackups(id: ClientId): Promise<BackupSummary[]>;
   getPlatformConfig(): Promise<ClientConfig | null>;
   refreshPlatformConfig(): Promise<ClientConfig>;
+  listSkills(): Promise<LocalSkill[]>;
   listChatSessions(): Promise<ChatSession[]>;
   readChatSession(id: string): Promise<ChatTranscript>;
   openUrl(url: string): Promise<void>;
@@ -51,6 +53,7 @@ async function tauriApi(): Promise<Api> {
     listBackups: (id) => invoke("list_backups", { id }),
     getPlatformConfig: () => invoke("get_platform_config"),
     refreshPlatformConfig: () => invoke("refresh_platform_config"),
+    listSkills: () => invoke("list_skills"),
     listChatSessions: () => invoke("list_chat_sessions"),
     readChatSession: (id) => invoke("read_chat_session", { id }),
     openUrl: (url) => opener.openUrl(url),
@@ -146,6 +149,11 @@ function mockApi(): Api {
     listBackups: async (id) => backups[id],
     getPlatformConfig: async () => (session.logged_in ? config : null),
     refreshPlatformConfig: async () => (session.logged_in ? config : err("not_logged_in", "not logged in")),
+    listSkills: async () => [
+      { id: "agents:brandkit", name: "brandkit", description: "做品牌板、标志和视觉规范。", source: "agents", kind: "user", path: "/home/aipanda/.agents/skills/brandkit" },
+      { id: "codex:review", name: "review-agent", description: "审阅代码改动。", source: "codex", kind: "system", path: "/home/aipanda/.codex/skills/.system/review-agent" },
+      { id: "claude:frontend", name: "frontend-design", description: "按现有界面做前端。", source: "claude", kind: "plugin", path: "/home/aipanda/.claude/plugins/frontend-design" },
+    ],
     listChatSessions: async () => chats.map((c) => ({ ...c })),
     readChatSession: async (id) => transcripts[id] ?? err("other", "找不到这场会话"),
     openUrl: async (url) => void window.open(url, "_blank"),

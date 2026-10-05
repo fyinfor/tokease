@@ -616,6 +616,16 @@ ul { margin: 0; padding: 0; list-style: none; }
 .session__top strong { font-size: 14px; font-weight: 650; }
 .session__top span, .thread__meta span { color: var(--muted); font-size: 12px; flex: none; }
 .session__cwd { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.skill { cursor: default; }
+.skill__desc {
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 .thread { display: flex; flex-direction: column; gap: 10px; }
 .thread__meta { flex-wrap: wrap; }
 .thread__meta strong { font-size: 14px; }
