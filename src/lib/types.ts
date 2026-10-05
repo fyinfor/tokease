@@ -88,7 +88,7 @@ export interface LocalSkill {
   name: string;
   description: string;
   source: "agents" | "codex" | "claude" | "cursor" | string;
-  kind: "user" | "system" | "plugin" | string;
+  kind: "user" | "system" | "plugin" | "catalog" | "mcp" | string;
   path: string;
 }
 

@@ -153,6 +153,8 @@ function mockApi(): Api {
       { id: "agents:brandkit", name: "brandkit", description: "做品牌板、标志和视觉规范。", source: "agents", kind: "user", path: "/home/aipanda/.agents/skills/brandkit" },
       { id: "codex:review", name: "review-agent", description: "审阅代码改动。", source: "codex", kind: "system", path: "/home/aipanda/.codex/skills/.system/review-agent" },
       { id: "claude:frontend", name: "frontend-design", description: "按现有界面做前端。", source: "claude", kind: "plugin", path: "/home/aipanda/.claude/plugins/frontend-design" },
+      { id: "claude:build-mcp", name: "build-mcp-server", description: "教你怎么写 MCP 服务。", source: "claude", kind: "catalog", path: "/home/aipanda/.claude/plugins/marketplaces/mcp-server-dev/skills/build-mcp-server" },
+      { id: "claude:github", name: "github", description: "MCP 服务 · https://api.githubcopilot.com/mcp/", source: "claude", kind: "mcp", path: "/home/aipanda/.claude/plugins/marketplaces/github/.mcp.json" },
     ],
     listChatSessions: async () => chats.map((c) => ({ ...c })),
     readChatSession: async (id) => transcripts[id] ?? err("other", "找不到这场会话"),

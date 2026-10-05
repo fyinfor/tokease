@@ -1,8 +1,9 @@
 //! Local agent skills (`SKILL.md`) for the tools installed on this machine.
 //!
 //! Read-only. A skill is the directory that contains `SKILL.md`. System
-//! skills, installed user skills, and plugin skills are all listed. The
-//! scan stays inside the known roots and does not follow directory symlinks.
+//! skills, installed user skills, plugin skills, and marketplace checkouts
+//! are all listed. `.mcp.json` servers are listed separately as `mcp`.
+//! The scan stays inside the known roots and does not follow directory symlinks.
 
 use std::fs::{self, File};
 use std::io::Read;
@@ -21,7 +22,9 @@ pub struct LocalSkill {
     pub description: String,
     /// `agents`, `codex`, `claude`, or `cursor`.
     pub source: String,
-    /// `user`, `system`, or `plugin`.
+    /// `user`, `system`, `plugin`, `catalog`, or `mcp`.
+    /// `catalog` is a marketplace checkout, not an enabled install.
+    /// `mcp` is a server declared in `.mcp.json`, not a `SKILL.md`.
     pub kind: String,
     /// Directory that holds `SKILL.md`.
     pub path: String,
@@ -88,6 +91,8 @@ fn walk(root: &Root, dir: &Path, depth: u8, out: &mut Vec<LocalSkill>) {
             if let Some(skill) = read_skill(root, &path) {
                 out.push(skill);
             }
+        } else if name == ".mcp.json" {
+            out.extend(read_mcp(root, &path));
         }
     }
 }
@@ -103,13 +108,7 @@ fn read_skill(root: &Root, file: &Path) -> Option<LocalSkill> {
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| folder.to_string());
     let description = fm.and_then(|text| field(text, "description")).unwrap_or_default();
-    let kind = if rel.components().any(|c| c.as_os_str() == ".system") || root.dir.ends_with("skills-cursor") {
-        "system"
-    } else if root.plugin {
-        "plugin"
-    } else {
-        "user"
-    };
+    let kind = skill_kind(root, rel);
     Some(LocalSkill {
         id: file.to_string_lossy().into_owned(),
         name,
@@ -167,6 +166,77 @@ fn field(fm: &str, key: &str) -> Option<String> {
     None
 }
 
+fn skill_kind(root: &Root, rel: &Path) -> &'static str {
+    let in_catalog = rel.components().any(|c| c.as_os_str() == "marketplaces");
+    if rel.components().any(|c| c.as_os_str() == ".system") || root.dir.ends_with("skills-cursor") {
+        "system"
+    } else if in_catalog {
+        "catalog"
+    } else if root.plugin {
+        "plugin"
+    } else {
+        "user"
+    }
+}
+
+/// Servers declared by a plugin or client. Descriptions stay on public fields
+/// so tokens in headers, args, or env never reach the UI.
+fn read_mcp(root: &Root, file: &Path) -> Vec<LocalSkill> {
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(&read_head(file)) else {
+        return Vec::new();
+    };
+    let Some(servers) = value.as_object() else {
+        return Vec::new();
+    };
+    let entries: Vec<(&String, &serde_json::Value)> = if let Some(nested) = servers.get("mcpServers").and_then(|v| v.as_object()) {
+        nested.iter().collect()
+    } else {
+        servers.iter().filter(|(_, v)| looks_like_server(v)).collect()
+    };
+    entries
+        .into_iter()
+        .map(|(name, spec)| LocalSkill {
+            id: format!("{}#{name}", file.to_string_lossy()),
+            name: name.clone(),
+            description: mcp_desc(spec),
+            source: root.source.to_string(),
+            kind: "mcp".to_string(),
+            path: file.to_string_lossy().into_owned(),
+        })
+        .collect()
+}
+
+fn looks_like_server(value: &serde_json::Value) -> bool {
+    value.get("command").and_then(|v| v.as_str()).is_some()
+        || value.get("url").and_then(|v| v.as_str()).is_some()
+        || value.get("type").and_then(|v| v.as_str()).is_some()
+}
+
+fn mcp_desc(spec: &serde_json::Value) -> String {
+    let mut parts = vec!["MCP 服务".to_string()];
+    if spec.get("enabled").and_then(|v| v.as_bool()) == Some(false) {
+        parts.push("未启用".to_string());
+    }
+    if let Some(url) = spec.get("url").and_then(|v| v.as_str()).and_then(public_url) {
+        parts.push(url);
+    } else if let Some(cmd) = spec.get("command").and_then(|v| v.as_str()) {
+        let base = Path::new(cmd).file_name().and_then(|s| s.to_str()).unwrap_or(cmd);
+        if !base.is_empty() && !base.contains(' ') && base.len() < 80 {
+            parts.push(base.to_string());
+        }
+    }
+    parts.join(" · ")
+}
+
+fn public_url(url: &str) -> Option<String> {
+    let bare = url.split('?').next().unwrap_or(url);
+    let lower = bare.to_ascii_lowercase();
+    if bare.contains('@') || lower.contains("token") || lower.contains("key=") {
+        return None;
+    }
+    Some(bare.to_string())
+}
+
 fn clip(text: &str) -> String {
     let one = text.split_whitespace().collect::<Vec<_>>().join(" ");
     let count = one.chars().count();
@@ -220,6 +290,42 @@ mod tests {
         assert_eq!(found[1].kind, "system");
         assert_eq!(found[2].kind, "plugin");
         assert!(found[2].path.ends_with("sites-building"));
+    }
+
+    #[test]
+    fn separates_marketplace_skills_from_mcp_servers() {
+        let tmp = tempfile::tempdir().unwrap();
+        let plugins = tmp.path().join("plugins");
+        write_skill(
+            &plugins.join("marketplaces/official/plugins/mcp-server-dev/skills/build-mcp-server"),
+            "---\nname: build-mcp-server\ndescription: Teach how to build an MCP server\n---\n",
+        );
+        let mcp = plugins.join("marketplaces/official/external_plugins/github/.mcp.json");
+        fs::create_dir_all(mcp.parent().unwrap()).unwrap();
+        fs::write(
+            &mcp,
+            r#"{"github":{"type":"http","url":"https://api.githubcopilot.com/mcp/","headers":{"Authorization":"Bearer secret-token"}}}"#,
+        )
+        .unwrap();
+        let bundled = plugins.join("cache/openai/code-review/1/.mcp.json");
+        fs::create_dir_all(bundled.parent().unwrap()).unwrap();
+        fs::write(
+            &bundled,
+            r#"{"mcpServers":{"code-review":{"command":"/bin/sh","enabled":false,"env":{"GH_TOKEN":"secret-token"}}}}"#,
+        )
+        .unwrap();
+
+        let found = list_in(&[Root { source: "claude", dir: plugins, plugin: true }]);
+        let skill = found.iter().find(|s| s.name == "build-mcp-server").unwrap();
+        assert_eq!(skill.kind, "catalog");
+        let github = found.iter().find(|s| s.name == "github").unwrap();
+        assert_eq!(github.kind, "mcp");
+        assert!(github.description.contains("https://api.githubcopilot.com/mcp/"));
+        assert!(!github.description.contains("secret-token"));
+        let review = found.iter().find(|s| s.name == "code-review").unwrap();
+        assert_eq!(review.kind, "mcp");
+        assert!(review.description.contains("未启用"));
+        assert!(!review.description.contains("secret-token"));
     }
 
     #[test]

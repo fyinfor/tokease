@@ -365,6 +365,11 @@ ul { margin: 0; padding: 0; list-style: none; }
   background: rgba(131, 146, 175, 0.09);
   border-color: rgba(131, 146, 175, 0.18);
 }
+.tag--mcp {
+  color: #f0d7a4;
+  background: rgba(230, 177, 90, 0.12);
+  border-color: rgba(230, 177, 90, 0.35);
+}
 .tool__side {
   display: flex;
   flex-direction: column;
@@ -577,7 +582,7 @@ ul { margin: 0; padding: 0; list-style: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* models / tasks */
-.filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .chip {
   height: 28px;
   padding: 0 10px;

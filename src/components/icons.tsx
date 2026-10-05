@@ -49,6 +49,17 @@ export function IconSkill(p: IconProps) {
   );
 }
 
+export function IconMcp(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M8 8.5V5.2A1.2 1.2 0 0 1 9.2 4h1.6A1.2 1.2 0 0 1 12 5.2V8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <path d="M12 8v2.2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+      <rect x="6.5" y="10.2" width="11" height="6.2" rx="1.6" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M9.2 16.4v2.2M14.8 16.4v2.2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 export function IconTasks(p: IconProps) {
   return (
     <Svg {...p}>

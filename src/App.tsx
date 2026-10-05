@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CommandPalette, type PaletteItem } from "./components/CommandPalette";
-import { IconClose, IconCube, IconHome, IconMinus, IconSearch, IconSkill, IconSquare, IconTasks, IconUser } from "./components/icons";
+import { IconClose, IconCube, IconHome, IconMcp, IconMinus, IconSearch, IconSkill, IconSquare, IconTasks, IconUser } from "./components/icons";
 import { LoginPanel } from "./components/LoginPanel";
 import { Logo } from "./components/Logo";
 import { TaskDock } from "./components/TaskDock";
@@ -11,15 +11,17 @@ import { Advanced } from "./pages/Advanced";
 import { Home } from "./pages/Home";
 import { Models } from "./pages/Models";
 import { Sessions } from "./pages/Sessions";
+import { Mcps } from "./pages/Mcps";
 import { Skills } from "./pages/Skills";
 import { Tasks } from "./pages/Tasks";
 
-type Page = "home" | "models" | "sessions" | "skills" | "tasks" | "advanced";
+type Page = "home" | "models" | "sessions" | "skills" | "mcp" | "tasks" | "advanced";
 
 const NAV: { id: Page; label: string; icon: typeof IconHome }[] = [
   { id: "home", label: "首页", icon: IconHome },
   { id: "models", label: "模型切换", icon: IconCube },
   { id: "skills", label: "Skill管理", icon: IconSkill },
+  { id: "mcp", label: "MCP管理", icon: IconMcp },
   { id: "tasks", label: "任务管理", icon: IconTasks },
 ];
 
@@ -275,6 +277,8 @@ export default function App() {
             <Sessions key={sessionClient} clientId={sessionClient} clients={clients} onBack={() => setPage("home")} />
           ) : page === "skills" ? (
             <Skills />
+          ) : page === "mcp" ? (
+            <Mcps />
           ) : page === "tasks" ? (
             <Tasks />
           ) : (
