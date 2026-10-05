@@ -759,6 +759,18 @@ input:focus { outline: 2px solid rgba(60, 120, 255, 0.55); outline-offset: 0; }
 }
 .link:hover { text-decoration: underline; }
 
+select.server {
+  width: 100%;
+  min-height: 34px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(130, 160, 220, 0.22);
+  background: #0c1525;
+  color: var(--text);
+  color-scheme: dark;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+}
 .advanced { display: flex; flex-direction: column; gap: 12px; padding-bottom: 20px; }
 .advanced h2 { font-size: 20px; font-weight: 650; }
 .block {

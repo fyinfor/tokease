@@ -16,8 +16,13 @@ const BACKEND_LABEL: Record<SessionInfo["storage_backend"], string> = {
   none: "—",
 };
 
+const SERVERS = ["https://www.tokease.cn/v1", "https://www.tokease.com/v1"] as const;
+
+function canonical(url: string) {
+  return url.trim().replace(/\/+$/, "");
+}
+
 export function Advanced({ session, clients, onSession, onClient }: Props) {
-  const [serverUrl, setServerUrl] = useState(session.server_url);
   const [config, setConfig] = useState<ClientConfig | null>(null);
   const [backups, setBackups] = useState<Record<string, BackupSummary[]>>({});
   const [msg, setMsg] = useState<string | null>(null);
@@ -46,11 +51,13 @@ export function Advanced({ session, clients, onSession, onClient }: Props) {
     }
   };
 
-  const saveServer = () =>
-    wrap(async () => {
-      onSession(await (await api()).setServerUrl(serverUrl));
-      return "服务器地址已保存";
+  const chooseServer = (url: (typeof SERVERS)[number]) => {
+    if (canonical(session.server_url) === url) return;
+    return wrap(async () => {
+      onSession(await (await api()).setServerUrl(url));
+      return "已切换服务器";
     });
+  };
 
   const refreshConfig = () =>
     wrap(async () => {
@@ -78,13 +85,21 @@ export function Advanced({ session, clients, onSession, onClient }: Props) {
 
       <section className="block">
         <h3>服务器</h3>
-        <div className="row">
-          <input value={serverUrl} onChange={(e) => setServerUrl(e.target.value)} spellCheck={false} />
-          <button className="btn" onClick={saveServer}>
-            保存
-          </button>
-        </div>
-        <p className="muted small">也可用环境变量 TOKEASE_SERVER_URL 覆盖（默认 https://www.tokease.cn/v1；本地 Mock：http://127.0.0.1:8787/v1）。</p>
+        <select
+          className="server"
+          aria-label="服务器"
+          value={SERVERS.find((url) => url === canonical(session.server_url)) ?? SERVERS[0]}
+          onChange={(e) => {
+            const url = SERVERS.find((item) => item === e.target.value);
+            if (url) chooseServer(url);
+          }}
+        >
+          {SERVERS.map((url) => (
+            <option key={url} value={url}>
+              {url}
+            </option>
+          ))}
+        </select>
       </section>
 
       <section className="block">

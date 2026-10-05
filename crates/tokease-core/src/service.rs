@@ -135,8 +135,11 @@ impl Tokease {
     }
 
     pub fn set_server_url(&self, url: &str) -> Result<SessionInfo> {
-        let url = url.trim().trim_end_matches('/');
-        url::Url::parse(url).map_err(|e| Error::Other(format!("invalid server URL: {e}")))?;
+        let Some(url) = crate::official_server(url) else {
+            return Err(Error::Other(
+                "只能选择 https://www.tokease.cn/v1 或 https://www.tokease.com/v1".into(),
+            ));
+        };
         self.state
             .update(|s| s.server_url = Some(url.to_string()))?;
         self.session()
@@ -466,5 +469,24 @@ impl Tokease {
                     .collect(),
             })
             .collect())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn server_choice_accepts_only_the_two_official_urls() {
+        let dir = tempfile::tempdir().unwrap();
+        let app = Tokease::with_data_dir(dir.path().to_path_buf(), Vec::new()).unwrap();
+        let saved = app.set_server_url("https://www.tokease.com/v1/").unwrap();
+        assert_eq!(saved.server_url, "https://www.tokease.com/v1");
+        let err = app.set_server_url("http://127.0.0.1:8787/v1").unwrap_err();
+        assert!(err.to_string().contains("tokease.cn"));
+        assert_eq!(
+            app.state.load().unwrap().server_url.as_deref(),
+            Some("https://www.tokease.com/v1")
+        );
     }
 }

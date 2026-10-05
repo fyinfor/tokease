@@ -33,9 +33,18 @@ pub use service::{ClientStatus, SessionInfo, Tokease};
 
 /// Default Tokease API server. Auth endpoints (`/auth/*`, `/client/config`)
 /// hang off this URL and it doubles as the OpenAI-compatible base URL when
-/// the server does not send its own. Override with `TOKEASE_SERVER_URL` or
-/// from the Advanced page.
+/// the server does not send its own.
 pub const DEFAULT_SERVER_URL: &str = "https://www.tokease.cn/v1";
+
+/// The only servers the desktop app will save. Developers can still point a
+/// local process at the mock with `TOKEASE_SERVER_URL`.
+pub const SERVER_URLS: [&str; 2] = ["https://www.tokease.cn/v1", "https://www.tokease.com/v1"];
+
+/// Returns the canonical official URL, ignoring a trailing slash.
+pub fn official_server(url: &str) -> Option<&'static str> {
+    let url = url.trim().trim_end_matches('/');
+    SERVER_URLS.into_iter().find(|candidate| *candidate == url)
+}
 
 /// Identifier written into every config we manage so that
 /// `validate()` can recognise its own work.

@@ -85,7 +85,7 @@ TOKEASE_SERVER_URL=http://127.0.0.1:8787/v1 pnpm tauri:dev
 #   Windows PowerShell:  $env:TOKEASE_SERVER_URL="http://127.0.0.1:8787/v1"; pnpm tauri:dev
 ```
 
-不设置 `TOKEASE_SERVER_URL` 时默认连 **`https://www.tokease.cn/v1`**，也可以在高级页里改。认证接口（`/auth/*`、`/client/config`）挂在这个地址下；服务端还没实现 `/client/config`（404）时，客户端用内置默认值：OpenAI 兼容地址 = 服务器地址本身，Anthropic / Gemini = 去掉 `/v1` 的根地址，模型 `code-best / code-fast / code-cheap`。
+不设置 `TOKEASE_SERVER_URL` 时默认连 **`https://www.tokease.cn/v1`**。高级页只能在 `https://www.tokease.cn/v1` 和 `https://www.tokease.com/v1` 之间切换。认证接口（`/auth/*`、`/client/config`）挂在这个地址下；服务端还没实现 `/client/config`（404）时，客户端用内置默认值：OpenAI 兼容地址 = 服务器地址本身，Anthropic / Gemini = 去掉 `/v1` 的根地址，模型 `code-best / code-fast / code-cheap`。
 
 打包：`pnpm tauri:build`（产物在 `src-tauri/target/release/bundle/`）。
 
