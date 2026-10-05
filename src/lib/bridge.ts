@@ -60,7 +60,7 @@ function mockApi(): Api {
   let session: SessionInfo = {
     logged_in: false,
     user: null,
-    server_url: "http://127.0.0.1:8787",
+    server_url: "http://127.0.0.1:8787/v1",
     storage_backend: "none",
     token_preview: null,
     data_dir: "/home/you/.tokease",

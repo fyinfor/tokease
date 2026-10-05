@@ -45,7 +45,9 @@ impl JsonPatch {
         let targets: HashSet<&KeyPath> = self.set.iter().map(|(k, _)| k).collect();
 
         for scope in &self.clear {
-            let Some(map) = object_at_mut(path, doc, &scope.parent.0)? else { continue };
+            let Some(map) = object_at_mut(path, doc, &scope.parent.0)? else {
+                continue;
+            };
             let doomed: Vec<String> = map
                 .keys()
                 .filter(|key| (scope.is_floor)(key) && !targets.contains(&scope.parent.child(key)))
@@ -90,7 +92,9 @@ impl JsonPatch {
                 continue;
             }
             let (parent, key) = split(key_path);
-            let Some(map) = object_at_mut(path, doc, parent)? else { continue };
+            let Some(map) = object_at_mut(path, doc, parent)? else {
+                continue;
+            };
             if map.get(key).is_some_and(|cur| values.contains(cur)) {
                 map.shift_remove(key);
             }
@@ -123,7 +127,12 @@ pub struct JsonStyle {
 
 impl Default for JsonStyle {
     fn default() -> Self {
-        Self { indent: b"  ".to_vec(), trailing_newline: true, crlf: false, bom: false }
+        Self {
+            indent: b"  ".to_vec(),
+            trailing_newline: true,
+            crlf: false,
+            bom: false,
+        }
     }
 }
 
@@ -139,7 +148,13 @@ pub fn parse(path: &Path, pre: Option<&[u8]>) -> Result<(Value, JsonStyle), Patc
         None => (false, text),
     };
     if text.trim().is_empty() {
-        return Ok((Value::Object(Map::new()), JsonStyle { bom, ..JsonStyle::default() }));
+        return Ok((
+            Value::Object(Map::new()),
+            JsonStyle {
+                bom,
+                ..JsonStyle::default()
+            },
+        ));
     }
     let doc: Value = serde_json::from_str(text).map_err(|err| PatchError::Parse {
         path: path.to_path_buf(),
@@ -205,7 +220,9 @@ fn detect_indent(text: &str) -> Option<Vec<u8>> {
 }
 
 fn split(key_path: &KeyPath) -> (&[String], &String) {
-    key_path.split_last().expect("patch paths must name a key, not the document root")
+    key_path
+        .split_last()
+        .expect("patch paths must name a key, not the document root")
 }
 
 /// Object at `segments`; `None` when a level is missing, error when a level
@@ -217,13 +234,17 @@ fn object_at_mut<'a>(
 ) -> Result<Option<&'a mut Map<String, Value>>, PatchError> {
     let mut cur = doc;
     for (depth, seg) in segments.iter().enumerate() {
-        let map = cur.as_object_mut().ok_or_else(|| PatchError::shape(path, &segments[..depth], "an object"))?;
+        let map = cur
+            .as_object_mut()
+            .ok_or_else(|| PatchError::shape(path, &segments[..depth], "an object"))?;
         match map.get_mut(seg) {
             Some(next) => cur = next,
             None => return Ok(None),
         }
     }
-    cur.as_object_mut().map(Some).ok_or_else(|| PatchError::shape(path, segments, "an object"))
+    cur.as_object_mut()
+        .map(Some)
+        .ok_or_else(|| PatchError::shape(path, segments, "an object"))
 }
 
 /// Object at `segments`, creating missing levels (appended to their parent).
@@ -234,10 +255,15 @@ fn ensure_object_mut<'a>(
 ) -> Result<&'a mut Map<String, Value>, PatchError> {
     let mut cur = doc;
     for (depth, seg) in segments.iter().enumerate() {
-        let map = cur.as_object_mut().ok_or_else(|| PatchError::shape(path, &segments[..depth], "an object"))?;
-        cur = map.entry(seg.clone()).or_insert_with(|| Value::Object(Map::new()));
+        let map = cur
+            .as_object_mut()
+            .ok_or_else(|| PatchError::shape(path, &segments[..depth], "an object"))?;
+        cur = map
+            .entry(seg.clone())
+            .or_insert_with(|| Value::Object(Map::new()));
     }
-    cur.as_object_mut().ok_or_else(|| PatchError::shape(path, segments, "an object"))
+    cur.as_object_mut()
+        .ok_or_else(|| PatchError::shape(path, segments, "an object"))
 }
 
 #[cfg(test)]
@@ -246,7 +272,12 @@ mod tests {
     use serde_json::json;
 
     fn apply(patch: &JsonPatch, pre: &str) -> String {
-        String::from_utf8(patch.apply(Path::new("settings.json"), Some(pre.as_bytes())).unwrap()).unwrap()
+        String::from_utf8(
+            patch
+                .apply(Path::new("settings.json"), Some(pre.as_bytes()))
+                .unwrap(),
+        )
+        .unwrap()
     }
 
     fn is_anthropic(key: &str) -> bool {
@@ -257,8 +288,14 @@ mod tests {
     fn clears_floor_sets_in_place_and_keeps_order_and_style() {
         let pre = "{\n\t\"theme\": \"dark\",\n\t\"env\": {\n\t\t\"ANTHROPIC_BASE_URL\": \"https://old\",\n\t\t\"FOO\": \"1\",\n\t\t\"ANTHROPIC_MODEL\": \"m\"\n\t}\n}\n";
         let patch = JsonPatch {
-            clear: vec![ClearScope { parent: KeyPath::new(&["env"]), is_floor: is_anthropic }],
-            set: vec![(KeyPath::new(&["env", "ANTHROPIC_BASE_URL"]), json!("https://new"))],
+            clear: vec![ClearScope {
+                parent: KeyPath::new(&["env"]),
+                is_floor: is_anthropic,
+            }],
+            set: vec![(
+                KeyPath::new(&["env", "ANTHROPIC_BASE_URL"]),
+                json!("https://new"),
+            )],
             ..Default::default()
         };
         let out = apply(&patch, pre);
@@ -268,16 +305,31 @@ mod tests {
     #[test]
     fn refuses_broken_or_non_object_files() {
         let patch = JsonPatch::default();
-        assert!(matches!(patch.apply(Path::new("x"), Some(b"{ broken")), Err(PatchError::Parse { .. })));
-        assert!(matches!(patch.apply(Path::new("x"), Some(b"[1]")), Err(PatchError::Shape { .. })));
-        let patch = JsonPatch { set: vec![(KeyPath::new(&["env", "A"]), json!("1"))], ..Default::default() };
-        assert!(matches!(patch.apply(Path::new("x"), Some(br#"{"env":"str"}"#)), Err(PatchError::Shape { .. })));
+        assert!(matches!(
+            patch.apply(Path::new("x"), Some(b"{ broken")),
+            Err(PatchError::Parse { .. })
+        ));
+        assert!(matches!(
+            patch.apply(Path::new("x"), Some(b"[1]")),
+            Err(PatchError::Shape { .. })
+        ));
+        let patch = JsonPatch {
+            set: vec![(KeyPath::new(&["env", "A"]), json!("1"))],
+            ..Default::default()
+        };
+        assert!(matches!(
+            patch.apply(Path::new("x"), Some(br#"{"env":"str"}"#)),
+            Err(PatchError::Shape { .. })
+        ));
     }
 
     #[test]
     fn missing_file_and_remove_if() {
         let patch = JsonPatch {
-            set: vec![(KeyPath::new(&["security", "auth", "selectedType"]), json!("gemini-api-key"))],
+            set: vec![(
+                KeyPath::new(&["security", "auth", "selectedType"]),
+                json!("gemini-api-key"),
+            )],
             ..Default::default()
         };
         let out = patch.apply(Path::new("x"), None).unwrap();
@@ -287,14 +339,26 @@ mod tests {
             remove_if: vec![(KeyPath::new(&["env", "W"]), vec![json!("1"), json!(1)])],
             ..Default::default()
         };
-        assert_eq!(apply(&patch, r#"{"env":{"W":1,"K":2}}"#), "{\n  \"env\": {\n    \"K\": 2\n  }\n}");
-        assert_eq!(apply(&patch, r#"{"env":{"W":"9"}}"#), "{\n  \"env\": {\n    \"W\": \"9\"\n  }\n}");
+        assert_eq!(
+            apply(&patch, r#"{"env":{"W":1,"K":2}}"#),
+            "{\n  \"env\": {\n    \"K\": 2\n  }\n}"
+        );
+        assert_eq!(
+            apply(&patch, r#"{"env":{"W":"9"}}"#),
+            "{\n  \"env\": {\n    \"W\": \"9\"\n  }\n}"
+        );
     }
 
     #[test]
     fn preserves_crlf_and_bom() {
         let pre = "\u{feff}{\r\n  \"a\": 1\r\n}\r\n";
-        let patch = JsonPatch { set: vec![(KeyPath::new(&["b"]), json!(2))], ..Default::default() };
-        assert_eq!(apply(&patch, pre), "\u{feff}{\r\n  \"a\": 1,\r\n  \"b\": 2\r\n}\r\n");
+        let patch = JsonPatch {
+            set: vec![(KeyPath::new(&["b"]), json!(2))],
+            ..Default::default()
+        };
+        assert_eq!(
+            apply(&patch, pre),
+            "\u{feff}{\r\n  \"a\": 1,\r\n  \"b\": 2\r\n}\r\n"
+        );
     }
 }

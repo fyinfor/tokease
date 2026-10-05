@@ -12,15 +12,24 @@ use super::{decode_utf8, line_column, KeyPath, PatchError};
 /// Parse the current file. A missing or blank file is the empty document;
 /// anything unparsable is an error (we never fall back to an empty document).
 pub fn parse(path: &Path, pre: Option<&[u8]>) -> Result<DocumentMut, PatchError> {
-    let Some(bytes) = pre else { return Ok(DocumentMut::new()) };
+    let Some(bytes) = pre else {
+        return Ok(DocumentMut::new());
+    };
     let text = decode_utf8(path, bytes)?;
     let text = text.strip_prefix('\u{feff}').unwrap_or(text);
     if text.trim().is_empty() {
         return Ok(DocumentMut::new());
     }
     text.parse::<DocumentMut>().map_err(|err| {
-        let (line, column) = err.span().map_or((0, 0), |span| line_column(text, span.start));
-        PatchError::Parse { path: path.to_path_buf(), line, column, message: err.message().to_string() }
+        let (line, column) = err
+            .span()
+            .map_or((0, 0), |span| line_column(text, span.start));
+        PatchError::Parse {
+            path: path.to_path_buf(),
+            line,
+            column,
+            message: err.message().to_string(),
+        }
     })
 }
 
@@ -114,18 +123,23 @@ pub fn ensure_table_mut<'a>(
             t.set_implicit(true);
             cur.insert(seg, Item::Table(t));
         }
-        cur = cur.get_mut(seg).and_then(Item::as_table_like_mut).ok_or_else(|| PatchError::Shape {
-            path: path.to_path_buf(),
-            key_path: KeyPath::new(&segments[..=depth]),
-            expected: "a table",
-        })?;
+        cur = cur
+            .get_mut(seg)
+            .and_then(Item::as_table_like_mut)
+            .ok_or_else(|| PatchError::Shape {
+                path: path.to_path_buf(),
+                key_path: KeyPath::new(&segments[..=depth]),
+                expected: "a table",
+            })?;
     }
     Ok(cur)
 }
 
 /// Remove the last key of `segments`, leaving the rest of its table alone.
 pub fn remove_nested(root: &mut Table, segments: &[&str]) {
-    let Some((last, parents)) = segments.split_last() else { return };
+    let Some((last, parents)) = segments.split_last() else {
+        return;
+    };
     if let Some(table) = table_at_mut(root, parents) {
         table.remove(last);
     }
@@ -151,19 +165,30 @@ mod tests {
 
     #[test]
     fn put_table_matches_container_shape() {
-        let mut doc = parse(Path::new("c"), Some(b"[model_providers.old]\nname = \"o\"\n")).unwrap();
+        let mut doc = parse(
+            Path::new("c"),
+            Some(b"[model_providers.old]\nname = \"o\"\n"),
+        )
+        .unwrap();
         let mut t = Table::new();
         t.insert("name", Item::Value(Value::from("n")));
         let providers = table_at_mut(doc.as_table_mut(), &["model_providers"]).unwrap();
         put_table(providers, "old", t.clone(), false);
         assert_eq!(doc.to_string(), "[model_providers.old]\nname = \"n\"\n");
 
-        let mut doc = parse(Path::new("c"), Some(b"model_providers = { old = { name = \"o\" } }\n")).unwrap();
+        let mut doc = parse(
+            Path::new("c"),
+            Some(b"model_providers = { old = { name = \"o\" } }\n"),
+        )
+        .unwrap();
         let providers = table_at_mut(doc.as_table_mut(), &["model_providers"]).unwrap();
         put_table(providers, "new", t, true);
         // toml_edit emits `} , ` between inline entries; only the shape matters.
         let out = doc.to_string().replace(" ,", ",");
-        assert_eq!(out, "model_providers = { old = { name = \"o\" }, new = { name = \"n\" } }\n");
+        assert_eq!(
+            out,
+            "model_providers = { old = { name = \"o\" }, new = { name = \"n\" } }\n"
+        );
     }
 
     #[test]
@@ -173,12 +198,19 @@ mod tests {
             PatchError::Parse { line, .. } => assert_eq!(line, 2),
             other => panic!("{other:?}"),
         }
-        assert!(parse(Path::new("c"), Some(b"  \n")).unwrap().to_string().is_empty());
+        assert!(parse(Path::new("c"), Some(b"  \n"))
+            .unwrap()
+            .to_string()
+            .is_empty());
     }
 
     #[test]
     fn remove_nested_leaves_siblings() {
-        let mut doc = parse(Path::new("c"), Some(b"[agents]\ndefault_subagent_model = \"m\"\nother = 1\n")).unwrap();
+        let mut doc = parse(
+            Path::new("c"),
+            Some(b"[agents]\ndefault_subagent_model = \"m\"\nother = 1\n"),
+        )
+        .unwrap();
         remove_nested(doc.as_table_mut(), &["agents", "default_subagent_model"]);
         remove_nested(doc.as_table_mut(), &["memories", "extract_model"]);
         assert_eq!(doc.to_string(), "[agents]\nother = 1\n");

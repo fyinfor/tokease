@@ -98,7 +98,12 @@ impl BackupStore {
         };
         let json = serde_json::to_vec_pretty(&manifest).map_err(|e| Error::Other(e.to_string()))?;
         fsutil::atomic_write(&dir.join("manifest.json"), &json, Some(0o600))?;
-        log::info!("backup {} created for {} ({} files)", manifest.id, client, manifest.files.len());
+        log::info!(
+            "backup {} created for {} ({} files)",
+            manifest.id,
+            client,
+            manifest.files.len()
+        );
         Ok(manifest)
     }
 
@@ -106,7 +111,9 @@ impl BackupStore {
     pub fn restore(&self, manifest: &BackupManifest) -> Result<()> {
         for f in &manifest.files {
             if f.existed {
-                let stored = manifest.dir.join(f.stored_as.as_deref().unwrap_or_default());
+                let stored = manifest
+                    .dir
+                    .join(f.stored_as.as_deref().unwrap_or_default());
                 let bytes = fs::read(&stored).map_err(|e| Error::io(&stored, e))?;
                 fsutil::atomic_write(&f.original_path, &bytes, f.mode)?;
             } else {
@@ -121,8 +128,10 @@ impl BackupStore {
         let dir = self.client_dir(client).join(id);
         let path = dir.join("manifest.json");
         let bytes = fs::read(&path).map_err(|e| Error::io(&path, e))?;
-        let mut m: BackupManifest = serde_json::from_slice(&bytes)
-            .map_err(|e| Error::Json { path: path.clone(), message: e.to_string() })?;
+        let mut m: BackupManifest = serde_json::from_slice(&bytes).map_err(|e| Error::Json {
+            path: path.clone(),
+            message: e.to_string(),
+        })?;
         m.dir = dir;
         Ok(m)
     }
@@ -164,7 +173,9 @@ mod tests {
         let missing = tmp.path().join("auth.json");
         fs::write(&existing, "original").unwrap();
 
-        let m = store.create(ClientId::Codex, &[existing.clone(), missing.clone()]).unwrap();
+        let m = store
+            .create(ClientId::Codex, &[existing.clone(), missing.clone()])
+            .unwrap();
         assert!(m.files[0].existed && !m.files[1].existed);
 
         fs::write(&existing, "changed").unwrap();

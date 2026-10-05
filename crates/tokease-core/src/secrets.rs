@@ -61,7 +61,11 @@ impl SecretStore {
     }
 
     fn keyring_set(token: &str) -> Result<()> {
-        Self::off_runtime(|| Self::entry()?.set_password(token).map_err(|e| Error::Secrets(e.to_string())))
+        Self::off_runtime(|| {
+            Self::entry()?
+                .set_password(token)
+                .map_err(|e| Error::Secrets(e.to_string()))
+        })
     }
 
     fn keyring_get() -> Result<Option<String>> {
@@ -90,8 +94,10 @@ impl SecretStore {
                 Err(e) => log::warn!("keychain unavailable ({e}); using file fallback"),
             }
         }
-        let json = serde_json::to_vec(&FileSecrets { access_token: token.to_string() })
-            .map_err(|e| Error::Secrets(e.to_string()))?;
+        let json = serde_json::to_vec(&FileSecrets {
+            access_token: token.to_string(),
+        })
+        .map_err(|e| Error::Secrets(e.to_string()))?;
         fsutil::atomic_write(&self.fallback_file, &json, Some(0o600))?;
         Ok(StorageBackend::EncryptedFileFallback)
     }
@@ -109,7 +115,10 @@ impl SecretStore {
             Some(bytes) => {
                 let f: FileSecrets = serde_json::from_slice(&bytes)
                     .map_err(|e| Error::Secrets(format!("corrupt credentials file: {e}")))?;
-                Ok(Some((f.access_token, StorageBackend::EncryptedFileFallback)))
+                Ok(Some((
+                    f.access_token,
+                    StorageBackend::EncryptedFileFallback,
+                )))
             }
             None => Ok(None),
         }

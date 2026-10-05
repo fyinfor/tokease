@@ -84,7 +84,7 @@ export function Advanced({ session, clients, onSession, onClient }: Props) {
             保存
           </button>
         </div>
-        <p className="muted small">也可用环境变量 TOKEASE_SERVER_URL 覆盖（例如本地 Mock：http://127.0.0.1:8787）。</p>
+        <p className="muted small">也可用环境变量 TOKEASE_SERVER_URL 覆盖（默认 https://www.tokease.cn/v1；本地 Mock：http://127.0.0.1:8787/v1）。</p>
       </section>
 
       <section className="block">

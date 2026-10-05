@@ -58,11 +58,22 @@ pub trait LivePatch {
 pub enum PatchError {
     /// The file cannot be parsed. Line/column are 1-based.
     #[error("cannot parse {path} (line {line}, column {column}): {message}; nothing was written")]
-    Parse { path: PathBuf, line: usize, column: usize, message: String },
+    Parse {
+        path: PathBuf,
+        line: usize,
+        column: usize,
+        message: String,
+    },
     /// Parsable, but the place we need to edit has the wrong shape
     /// (e.g. `env` is a string instead of an object).
-    #[error("{key_path} in {path} is not {expected}; nothing was written to protect your configuration")]
-    Shape { path: PathBuf, key_path: KeyPath, expected: &'static str },
+    #[error(
+        "{key_path} in {path} is not {expected}; nothing was written to protect your configuration"
+    )]
+    Shape {
+        path: PathBuf,
+        key_path: KeyPath,
+        expected: &'static str,
+    },
     /// The active Codex profile overrides the route we would write.
     #[error("the active Codex profile \"{profile}\" sets {key}, so requests would not reach Tokease; remove it from [profiles.{profile}] or change the top-level `profile`")]
     Route { profile: String, key: String },
@@ -70,7 +81,11 @@ pub enum PatchError {
 
 impl PatchError {
     pub fn shape(path: &Path, segments: &[String], expected: &'static str) -> Self {
-        PatchError::Shape { path: path.to_path_buf(), key_path: KeyPath(segments.to_vec()), expected }
+        PatchError::Shape {
+            path: path.to_path_buf(),
+            key_path: KeyPath(segments.to_vec()),
+            expected,
+        }
     }
 }
 
@@ -79,10 +94,9 @@ pub(crate) fn line_column(text: &str, offset: usize) -> (usize, usize) {
     let offset = offset.min(text.len());
     let before = &text[..offset];
     let line = before.matches('\n').count() + 1;
-    let column = before
-        .rfind('\n')
-        .map_or(before.chars().count(), |nl| before[nl + 1..].chars().count())
-        + 1;
+    let column = before.rfind('\n').map_or(before.chars().count(), |nl| {
+        before[nl + 1..].chars().count()
+    }) + 1;
     (line, column)
 }
 
@@ -90,7 +104,12 @@ pub(crate) fn decode_utf8<'a>(path: &Path, bytes: &'a [u8]) -> Result<&'a str, P
     std::str::from_utf8(bytes).map_err(|err| {
         let valid = std::str::from_utf8(&bytes[..err.valid_up_to()]).unwrap_or_default();
         let (line, column) = line_column(valid, err.valid_up_to());
-        PatchError::Parse { path: path.to_path_buf(), line, column, message: "not UTF-8 text".into() }
+        PatchError::Parse {
+            path: path.to_path_buf(),
+            line,
+            column,
+            message: "not UTF-8 text".into(),
+        }
     })
 }
 

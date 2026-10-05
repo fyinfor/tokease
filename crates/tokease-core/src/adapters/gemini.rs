@@ -14,7 +14,10 @@ use std::path::PathBuf;
 
 use serde_json::{json, Value};
 
-use super::{detect_tool, home_dir, Adapter, ClientId, ConnectionSpec, CurrentConfig, Detection, PlannedFile, Validation};
+use super::{
+    detect_tool, home_dir, Adapter, ClientId, ConnectionSpec, CurrentConfig, Detection,
+    PlannedFile, Validation,
+};
 use crate::error::Result;
 use crate::floor;
 use crate::fsutil;
@@ -39,7 +42,9 @@ impl Default for GeminiAdapter {
 
 impl GeminiAdapter {
     pub fn new(config_dir: impl Into<PathBuf>) -> Self {
-        Self { config_dir: config_dir.into() }
+        Self {
+            config_dir: config_dir.into(),
+        }
     }
 
     fn env_path(&self) -> PathBuf {
@@ -51,7 +56,10 @@ impl GeminiAdapter {
 
     fn read_env(&self) -> Result<(Option<Vec<u8>>, String)> {
         let pre = fsutil::read_optional(&self.env_path())?;
-        let text = pre.as_deref().map(|b| String::from_utf8_lossy(b).into_owned()).unwrap_or_default();
+        let text = pre
+            .as_deref()
+            .map(|b| String::from_utf8_lossy(b).into_owned())
+            .unwrap_or_default();
         Ok((pre, text))
     }
 
@@ -64,14 +72,20 @@ impl GeminiAdapter {
 
     fn settings_patch(spec: &ConnectionSpec, doc: &Value) -> JsonPatch {
         let mut set = vec![
-            (KeyPath::new(&["security", "auth", "selectedType"]), json!(AUTH_TYPE)),
+            (
+                KeyPath::new(&["security", "auth", "selectedType"]),
+                json!(AUTH_TYPE),
+            ),
             (KeyPath::new(&["model", "name"]), json!(spec.model)),
         ];
         // Pre-v0.3 key: keep it consistent only if the user still has it.
         if doc.get("selectedAuthType").is_some() {
             set.push((KeyPath::new(&["selectedAuthType"]), json!(AUTH_TYPE)));
         }
-        JsonPatch { set, ..JsonPatch::default() }
+        JsonPatch {
+            set,
+            ..JsonPatch::default()
+        }
     }
 }
 
@@ -118,11 +132,22 @@ impl Adapter for GeminiAdapter {
         let env_content = env_patch.apply(&self.env_path(), env_pre.as_deref())?;
 
         let (settings_pre, doc) = self.read_settings()?;
-        let settings_content = Self::settings_patch(spec, &doc).apply(&self.settings_path(), settings_pre.as_deref())?;
+        let settings_content = Self::settings_patch(spec, &doc)
+            .apply(&self.settings_path(), settings_pre.as_deref())?;
 
         Ok(vec![
-            PlannedFile { path: self.env_path(), pre: env_pre, content: env_content, secret: true },
-            PlannedFile { path: self.settings_path(), pre: settings_pre, content: settings_content, secret: false },
+            PlannedFile {
+                path: self.env_path(),
+                pre: env_pre,
+                content: env_content,
+                secret: true,
+            },
+            PlannedFile {
+                path: self.settings_path(),
+                pre: settings_pre,
+                content: settings_content,
+                secret: false,
+            },
         ])
     }
 
@@ -146,9 +171,12 @@ impl Adapter for GeminiAdapter {
         match self.read_settings() {
             Err(e) => problems.push(e.to_string()),
             Ok((_, doc)) => {
-                let t = jsonp::value_at(&doc, &KeyPath::new(&["security", "auth", "selectedType"])).and_then(Value::as_str);
+                let t = jsonp::value_at(&doc, &KeyPath::new(&["security", "auth", "selectedType"]))
+                    .and_then(Value::as_str);
                 if t != Some(AUTH_TYPE) {
-                    problems.push(format!("security.auth.selectedType is {t:?}, expected {AUTH_TYPE:?}"));
+                    problems.push(format!(
+                        "security.auth.selectedType is {t:?}, expected {AUTH_TYPE:?}"
+                    ));
                 }
             }
         }
@@ -156,7 +184,13 @@ impl Adapter for GeminiAdapter {
     }
 
     fn env_conflict_prefixes(&self) -> &'static [&'static str] {
-        &["GEMINI_API_KEY", "GEMINI_MODEL", "GOOGLE_GEMINI_BASE_URL", "GOOGLE_API_KEY", "GOOGLE_CLOUD_"]
+        &[
+            "GEMINI_API_KEY",
+            "GEMINI_MODEL",
+            "GOOGLE_GEMINI_BASE_URL",
+            "GOOGLE_API_KEY",
+            "GOOGLE_CLOUD_",
+        ]
     }
 }
 
@@ -173,8 +207,14 @@ mod tests {
         testutil::closed_loop(
             &a,
             &[
-                (&dir.join(".env"), "GEMINI_API_KEY=old\nGOOGLE_CLOUD_PROJECT=p\nGEMINI_SANDBOX=docker\n"),
-                (&dir.join("settings.json"), r#"{"theme":"Default","selectedAuthType":"oauth-personal"}"#),
+                (
+                    &dir.join(".env"),
+                    "GEMINI_API_KEY=old\nGOOGLE_CLOUD_PROJECT=p\nGEMINI_SANDBOX=docker\n",
+                ),
+                (
+                    &dir.join("settings.json"),
+                    r#"{"theme":"Default","selectedAuthType":"oauth-personal"}"#,
+                ),
             ],
         );
     }
@@ -190,8 +230,16 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let dir = tmp.path().join(".gemini");
         std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(dir.join(".env"), "GEMINI_API_KEY=old\nGOOGLE_CLOUD_PROJECT=p\nGEMINI_SANDBOX=docker\n").unwrap();
-        std::fs::write(dir.join("settings.json"), "{\n  \"theme\": \"Default\",\n  \"selectedAuthType\": \"oauth-personal\"\n}\n").unwrap();
+        std::fs::write(
+            dir.join(".env"),
+            "GEMINI_API_KEY=old\nGOOGLE_CLOUD_PROJECT=p\nGEMINI_SANDBOX=docker\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("settings.json"),
+            "{\n  \"theme\": \"Default\",\n  \"selectedAuthType\": \"oauth-personal\"\n}\n",
+        )
+        .unwrap();
         let files = GeminiAdapter::new(&dir).plan(&testutil::spec()).unwrap();
 
         let env = String::from_utf8(files[0].content.clone()).unwrap();
@@ -205,6 +253,9 @@ mod tests {
         assert_eq!(v["selectedAuthType"], AUTH_TYPE);
         assert_eq!(v["security"]["auth"]["selectedType"], AUTH_TYPE);
         assert_eq!(v["model"]["name"], "code-best");
-        assert!(settings.starts_with("{\n  \"theme\""), "indent and order kept:\n{settings}");
+        assert!(
+            settings.starts_with("{\n  \"theme\""),
+            "indent and order kept:\n{settings}"
+        );
     }
 }

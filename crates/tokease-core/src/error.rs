@@ -22,7 +22,9 @@ pub enum Error {
 
     /// The file changed on disk between planning and writing (another tool
     /// or the CLI itself wrote it). Nothing was written; just retry.
-    #[error("{path} changed while Tokease was preparing the write; nothing was written, please retry")]
+    #[error(
+        "{path} changed while Tokease was preparing the write; nothing was written, please retry"
+    )]
     Conflict { path: PathBuf },
 
     #[error("{client} is not installed")]
@@ -55,7 +57,9 @@ pub enum Error {
         source: Box<Error>,
     },
 
-    #[error("apply failed ({source}) AND rollback failed ({rollback}); backup kept at {backup_dir}")]
+    #[error(
+        "apply failed ({source}) AND rollback failed ({rollback}); backup kept at {backup_dir}"
+    )]
     RollbackFailed {
         source: Box<Error>,
         rollback: Box<Error>,
@@ -68,7 +72,10 @@ pub enum Error {
 
 impl Error {
     pub fn io(path: impl Into<PathBuf>, source: std::io::Error) -> Self {
-        Error::Io { path: path.into(), source }
+        Error::Io {
+            path: path.into(),
+            source,
+        }
     }
 }
 

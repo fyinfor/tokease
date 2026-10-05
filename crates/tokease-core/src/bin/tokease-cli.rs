@@ -13,7 +13,11 @@ use tokease_core::service::LoginPoll;
 use tokease_core::{ClientId, Tokease};
 
 #[derive(Parser)]
-#[command(name = "tokease-cli", version, about = "Tokease connector CLI (debug/headless)")]
+#[command(
+    name = "tokease-cli",
+    version,
+    about = "Tokease connector CLI (debug/headless)"
+)]
 struct Cli {
     /// Override the Tokease server URL for this run.
     #[arg(long, env = "TOKEASE_SERVER_URL")]
@@ -35,7 +39,9 @@ enum Cmd {
     },
     Logout,
     /// One-click enable Tokease for a client (codex | claude | gemini).
-    Enable { client: String },
+    Enable {
+        client: String,
+    },
     /// Restore the pre-Tokease configuration.
     Restore {
         client: String,
@@ -43,7 +49,9 @@ enum Cmd {
         backup: Option<String>,
     },
     /// List backups for a client.
-    Backups { client: String },
+    Backups {
+        client: String,
+    },
     /// Fetch and print /client/config.
     Config,
 }
@@ -76,9 +84,17 @@ async fn run(cli: Cli) -> tokease_core::Result<()> {
             println!("server     : {}", s.server_url);
             println!("logged in  : {}", s.logged_in);
             if let Some(u) = &s.user {
-                println!("user       : {} {}", u.id, u.email.clone().unwrap_or_default());
+                println!(
+                    "user       : {} {}",
+                    u.id,
+                    u.email.clone().unwrap_or_default()
+                );
             }
-            println!("token      : {} [{:?}]", s.token_preview.unwrap_or_else(|| "-".into()), s.storage_backend);
+            println!(
+                "token      : {} [{:?}]",
+                s.token_preview.unwrap_or_else(|| "-".into()),
+                s.storage_backend
+            );
             println!("data dir   : {}", s.data_dir.display());
             println!();
             for c in app.client_statuses()? {
@@ -92,32 +108,58 @@ async fn run(cli: Cli) -> tokease_core::Result<()> {
                     c.current.model.unwrap_or_else(|| "-".into()),
                 );
                 if let Some(bin) = &c.binary_path {
-                    println!("             binary {} ({})", bin.display(), c.version.clone().unwrap_or_else(|| "version unknown".into()));
+                    println!(
+                        "             binary {} ({})",
+                        bin.display(),
+                        c.version
+                            .clone()
+                            .unwrap_or_else(|| "version unknown".into())
+                    );
                 }
                 if c.outdated {
-                    println!("             ! CLI is older than {} — upgrade it", c.min_version.clone().unwrap_or_default());
+                    println!(
+                        "             ! CLI is older than {} — upgrade it",
+                        c.min_version.clone().unwrap_or_default()
+                    );
                 }
                 for p in c.problems {
                     println!("             ! {p}");
                 }
                 for e in c.env_conflicts {
-                    println!("             ! env {} is set in {} ({}) and overrides the config file", e.name, e.source, e.preview);
+                    println!(
+                        "             ! env {} is set in {} ({}) and overrides the config file",
+                        e.name, e.source, e.preview
+                    );
                 }
             }
         }
-        Cmd::Login { email: Some(email), password } => {
+        Cmd::Login {
+            email: Some(email),
+            password,
+        } => {
             let password = match password {
                 Some(p) => p,
                 None => rpassword_fallback()?,
             };
             let s = app.login_password(&email, &password).await?;
-            println!("logged in as {:?} (token in {:?})", s.user.map(|u| u.id), s.storage_backend);
+            println!(
+                "logged in as {:?} (token in {:?})",
+                s.user.map(|u| u.id),
+                s.storage_backend
+            );
         }
         Cmd::Login { email: None, .. } => {
             let start = app.device_start().await?;
             println!("Open this URL and enter code {}:", start.user_code);
-            println!("  {}", start.verification_uri_complete.clone().unwrap_or(start.verification_uri.clone()));
-            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(start.expires_in);
+            println!(
+                "  {}",
+                start
+                    .verification_uri_complete
+                    .clone()
+                    .unwrap_or(start.verification_uri.clone())
+            );
+            let deadline =
+                std::time::Instant::now() + std::time::Duration::from_secs(start.expires_in);
             loop {
                 tokio::time::sleep(std::time::Duration::from_secs(start.interval.max(1))).await;
                 match app.device_poll(&start.device_code).await? {
@@ -127,11 +169,19 @@ async fn run(cli: Cli) -> tokease_core::Result<()> {
                         }
                     }
                     LoginPoll::Authorized { session } => {
-                        println!("logged in as {:?} (token in {:?})", session.user.map(|u| u.id), session.storage_backend);
+                        println!(
+                            "logged in as {:?} (token in {:?})",
+                            session.user.map(|u| u.id),
+                            session.storage_backend
+                        );
                         break;
                     }
-                    LoginPoll::Expired => return Err(tokease_core::Error::Other("device code expired".into())),
-                    LoginPoll::Denied => return Err(tokease_core::Error::Other("login denied".into())),
+                    LoginPoll::Expired => {
+                        return Err(tokease_core::Error::Other("device code expired".into()))
+                    }
+                    LoginPoll::Denied => {
+                        return Err(tokease_core::Error::Other("login denied".into()))
+                    }
                 }
             }
         }
@@ -141,7 +191,12 @@ async fn run(cli: Cli) -> tokease_core::Result<()> {
         }
         Cmd::Enable { client } => {
             let s = app.enable(parse_client(&client)).await?;
-            println!("{} enabled -> {} (model {})", s.name, s.current.base_url.unwrap_or_default(), s.current.model.unwrap_or_default());
+            println!(
+                "{} enabled -> {} (model {})",
+                s.name,
+                s.current.base_url.unwrap_or_default(),
+                s.current.model.unwrap_or_default()
+            );
             println!("restore point: backup {}", s.backup_id.unwrap_or_default());
         }
         Cmd::Restore { client, backup } => {

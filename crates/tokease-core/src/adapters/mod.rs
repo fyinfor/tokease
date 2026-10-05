@@ -104,10 +104,16 @@ pub struct Validation {
 
 impl Validation {
     pub fn ok() -> Self {
-        Self { ok: true, problems: vec![] }
+        Self {
+            ok: true,
+            problems: vec![],
+        }
     }
     pub fn fail(problems: Vec<String>) -> Self {
-        Self { ok: problems.is_empty(), problems }
+        Self {
+            ok: problems.is_empty(),
+            problems,
+        }
     }
 }
 
@@ -193,7 +199,9 @@ pub trait Adapter: Send + Sync {
             // (or the CLI itself) may have written it meanwhile.
             for f in &changed {
                 if fsutil::read_optional(&f.path)? != f.pre {
-                    return Err(Error::Conflict { path: f.path.clone() });
+                    return Err(Error::Conflict {
+                        path: f.path.clone(),
+                    });
                 }
             }
             for f in &changed {
@@ -213,7 +221,9 @@ pub trait Adapter: Send + Sync {
             Err(source) => {
                 log::error!("{}: apply failed ({source}); rolling back", self.id());
                 match backups.restore(&manifest) {
-                    Ok(()) => Err(Error::RolledBack { source: Box::new(source) }),
+                    Ok(()) => Err(Error::RolledBack {
+                        source: Box::new(source),
+                    }),
                     Err(rollback) => Err(Error::RollbackFailed {
                         source: Box::new(source),
                         rollback: Box::new(rollback),
@@ -235,7 +245,11 @@ pub(crate) fn home_dir() -> PathBuf {
 
 /// Shared detection: binary on PATH / known locations, or the config dir
 /// exists (the tool was used before even if we cannot see its binary).
-pub(crate) fn detect_tool(name: &str, absolute: &[&str], config_dir: &std::path::Path) -> Detection {
+pub(crate) fn detect_tool(
+    name: &str,
+    absolute: &[&str],
+    config_dir: &std::path::Path,
+) -> Detection {
     let binary_path = locate::find_binary(&[name], &locate::candidates(name, absolute));
     let version = binary_path.as_deref().and_then(locate::version_of);
     Detection {
@@ -279,11 +293,17 @@ pub(crate) mod testutil {
             std::fs::create_dir_all(p.parent().unwrap()).unwrap();
             std::fs::write(p, c).unwrap();
         }
-        let before: Vec<Option<Vec<u8>>> =
-            adapter.managed_paths().iter().map(|p| std::fs::read(p).ok()).collect();
+        let before: Vec<Option<Vec<u8>>> = adapter
+            .managed_paths()
+            .iter()
+            .map(|p| std::fs::read(p).ok())
+            .collect();
 
         let s = spec();
-        assert!(!adapter.validate_config(&s.base_url).ok, "must not validate before apply");
+        assert!(
+            !adapter.validate_config(&s.base_url).ok,
+            "must not validate before apply"
+        );
         let manifest = adapter.apply_config(&backups, &s).unwrap();
         let v = adapter.validate_config(&s.base_url);
         assert!(v.ok, "validate after apply: {:?}", v.problems);
@@ -293,11 +313,17 @@ pub(crate) mod testutil {
 
         // Enabling twice is a no-op: the second plan changes nothing.
         let again = adapter.plan(&s).unwrap();
-        assert!(again.iter().all(|f| f.is_noop()), "second apply must be a no-op");
+        assert!(
+            again.iter().all(|f| f.is_noop()),
+            "second apply must be a no-op"
+        );
 
         adapter.restore_config(&backups, &manifest).unwrap();
-        let after: Vec<Option<Vec<u8>>> =
-            adapter.managed_paths().iter().map(|p| std::fs::read(p).ok()).collect();
+        let after: Vec<Option<Vec<u8>>> = adapter
+            .managed_paths()
+            .iter()
+            .map(|p| std::fs::read(p).ok())
+            .collect();
         assert_eq!(before, after, "restore must be byte-identical");
         assert!(!adapter.validate_config(&s.base_url).ok);
     }
@@ -316,7 +342,12 @@ pub(crate) mod testutil {
             "openai"
         }
         fn detect(&self) -> Detection {
-            Detection { installed: true, binary_path: None, version: None, config_dir: self.0.clone() }
+            Detection {
+                installed: true,
+                binary_path: None,
+                version: None,
+                config_dir: self.0.clone(),
+            }
         }
         fn managed_paths(&self) -> Vec<PathBuf> {
             vec![self.0.join("cfg"), self.0.join("new-file")]
@@ -332,7 +363,12 @@ pub(crate) mod testutil {
                     content: b"broken".to_vec(),
                     secret: false,
                 },
-                PlannedFile { path: self.0.join("new-file"), pre: None, content: b"x".to_vec(), secret: true },
+                PlannedFile {
+                    path: self.0.join("new-file"),
+                    pre: None,
+                    content: b"x".to_vec(),
+                    secret: true,
+                },
             ])
         }
         fn validate_config(&self, _: &str) -> Validation {
@@ -354,8 +390,14 @@ pub(crate) mod testutil {
 
         let err = a.apply_config(&backups, &spec()).unwrap_err();
         assert!(matches!(err, Error::RolledBack { .. }), "{err}");
-        assert_eq!(std::fs::read_to_string(dir.join("cfg")).unwrap(), "original");
-        assert!(!dir.join("new-file").exists(), "file created during apply must be removed");
+        assert_eq!(
+            std::fs::read_to_string(dir.join("cfg")).unwrap(),
+            "original"
+        );
+        assert!(
+            !dir.join("new-file").exists(),
+            "file created during apply must be removed"
+        );
     }
 
     #[test]
@@ -378,7 +420,12 @@ pub(crate) mod testutil {
                 "openai"
             }
             fn detect(&self) -> Detection {
-                Detection { installed: true, binary_path: None, version: None, config_dir: self.0.clone() }
+                Detection {
+                    installed: true,
+                    binary_path: None,
+                    version: None,
+                    config_dir: self.0.clone(),
+                }
             }
             fn managed_paths(&self) -> Vec<PathBuf> {
                 vec![self.0.join("cfg")]
@@ -404,8 +451,16 @@ pub(crate) mod testutil {
             }
         }
 
-        let err = Racy(dir.clone()).apply_config(&backups, &spec()).unwrap_err();
-        assert!(matches!(err, Error::RolledBack { ref source } if matches!(**source, Error::Conflict { .. })), "{err}");
-        assert_eq!(std::fs::read_to_string(dir.join("cfg")).unwrap(), "someone else");
+        let err = Racy(dir.clone())
+            .apply_config(&backups, &spec())
+            .unwrap_err();
+        assert!(
+            matches!(err, Error::RolledBack { ref source } if matches!(**source, Error::Conflict { .. })),
+            "{err}"
+        );
+        assert_eq!(
+            std::fs::read_to_string(dir.join("cfg")).unwrap(),
+            "someone else"
+        );
     }
 }

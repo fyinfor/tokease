@@ -27,21 +27,29 @@ impl From<Error> for CmdError {
             Error::Network(_) => "network",
             Error::Secrets(_) => "secrets",
             Error::NoBackup { .. } => "no_backup",
-            Error::RolledBack { source } if matches!(**source, Error::Conflict { .. }) => "conflict",
+            Error::RolledBack { source } if matches!(**source, Error::Conflict { .. }) => {
+                "conflict"
+            }
             Error::RolledBack { .. } => "rolled_back",
             Error::RollbackFailed { .. } => "rollback_failed",
             Error::Patch(_) => "patch",
             Error::Conflict { .. } => "conflict",
             _ => "other",
         };
-        CmdError { kind, message: e.to_string() }
+        CmdError {
+            kind,
+            message: e.to_string(),
+        }
     }
 }
 
 type CmdResult<T> = Result<T, CmdError>;
 
 fn parse_client(id: &str) -> CmdResult<ClientId> {
-    ClientId::parse(id).ok_or_else(|| CmdError { kind: "other", message: format!("unknown client {id:?}") })
+    ClientId::parse(id).ok_or_else(|| CmdError {
+        kind: "other",
+        message: format!("unknown client {id:?}"),
+    })
 }
 
 /// Run a synchronous core call off the async executor (fs + keychain).
@@ -52,7 +60,10 @@ async fn blocking<T: Send + 'static>(
     let core = core.clone();
     tauri::async_runtime::spawn_blocking(move || f(&core))
         .await
-        .map_err(|e| CmdError { kind: "other", message: e.to_string() })?
+        .map_err(|e| CmdError {
+            kind: "other",
+            message: e.to_string(),
+        })?
         .map_err(Into::into)
 }
 
@@ -77,7 +88,11 @@ pub async fn poll_device_login(core: Core<'_>, device_code: String) -> CmdResult
 }
 
 #[tauri::command]
-pub async fn login_with_password(core: Core<'_>, email: String, password: String) -> CmdResult<SessionInfo> {
+pub async fn login_with_password(
+    core: Core<'_>,
+    email: String,
+    password: String,
+) -> CmdResult<SessionInfo> {
     Ok(core.login_password(&email, &password).await?)
 }
 
@@ -98,7 +113,11 @@ pub async fn enable_client(core: Core<'_>, id: String) -> CmdResult<ClientStatus
 }
 
 #[tauri::command]
-pub async fn restore_client(core: Core<'_>, id: String, backup_id: Option<String>) -> CmdResult<ClientStatus> {
+pub async fn restore_client(
+    core: Core<'_>,
+    id: String,
+    backup_id: Option<String>,
+) -> CmdResult<ClientStatus> {
     let id = parse_client(&id)?;
     blocking(&core, move |c| c.restore(id, backup_id.as_deref())).await
 }

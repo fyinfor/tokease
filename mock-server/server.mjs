@@ -6,13 +6,20 @@
 //   POST /auth/login             { email, password }  (any password = "demo")
 //   GET  /client/config          Bearer token required
 //
-// Env: PORT (default 8787), AUTO_APPROVE_SECONDS (default 8; 0 = manual only)
+// Every route is also served under the `/v1` prefix so the mock can stand in
+// for the real server URL layout (`https://www.tokease.cn/v1`):
+// point the app at `TOKEASE_SERVER_URL=http://127.0.0.1:8787/v1`.
+//
+// Env: PORT (default 8787), AUTO_APPROVE_SECONDS (default 8; 0 = manual only),
+//      NO_CLIENT_CONFIG=1 (answer 404 on /client/config to exercise the
+//      app's built-in defaults)
 
 import http from "node:http";
 import { randomBytes } from "node:crypto";
 
 const PORT = Number(process.env.PORT || 8787);
 const AUTO_APPROVE_SECONDS = Number(process.env.AUTO_APPROVE_SECONDS ?? 8);
+const NO_CLIENT_CONFIG = process.env.NO_CLIENT_CONFIG === "1";
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 
 const tokens = new Map(); // token -> user
@@ -77,8 +84,8 @@ function bearer(req) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, ORIGIN);
-  const path = url.pathname;
-  console.log(new Date().toISOString(), req.method, path);
+  const path = url.pathname.replace(/^\/v1(?=\/|$)/, "") || "/";
+  console.log(new Date().toISOString(), req.method, url.pathname);
 
   if (req.method === "OPTIONS") return json(res, 204, {});
 
@@ -159,6 +166,7 @@ if(r.ok){document.getElementById('ok').style.display='block'}else{alert('未知�
   if (req.method === "GET" && path === "/client/config") {
     const t = bearer(req);
     if (!t || !tokens.has(t)) return json(res, 401, { error: "invalid or missing token" });
+    if (NO_CLIENT_CONFIG) return json(res, 404, { error: "not implemented" });
     return json(res, 200, clientConfig());
   }
 

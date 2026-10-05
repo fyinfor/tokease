@@ -50,7 +50,11 @@ pub fn check(patterns: &[&str]) -> Vec<EnvConflict> {
     let mut out = Vec::new();
     for (name, value) in std::env::vars() {
         if matches(&name, patterns) && !value.trim().is_empty() {
-            out.push(EnvConflict { name, source: "process".into(), preview: redact::token(&value) });
+            out.push(EnvConflict {
+                name,
+                source: "process".into(),
+                preview: redact::token(&value),
+            });
         }
     }
     for file in shell_files() {
@@ -62,7 +66,13 @@ pub fn check(patterns: &[&str]) -> Vec<EnvConflict> {
 }
 
 fn matches(name: &str, patterns: &[&str]) -> bool {
-    patterns.iter().any(|p| if p.ends_with('_') { name.starts_with(p) } else { name == *p })
+    patterns.iter().any(|p| {
+        if p.ends_with('_') {
+            name.starts_with(p)
+        } else {
+            name == *p
+        }
+    })
 }
 
 /// `export NAME=value`, `NAME=value`, `set -gx NAME value` (fish). Commented
@@ -89,7 +99,9 @@ fn scan_shell_text(text: &str, patterns: &[&str], file: &Path) -> Vec<EnvConflic
             }
         } else {
             let rest = line.strip_prefix("export ").unwrap_or(line);
-            let Some((n, v)) = rest.split_once('=') else { continue };
+            let Some((n, v)) = rest.split_once('=') else {
+                continue;
+            };
             let n = n.trim();
             if n.is_empty() || !n.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
                 continue;
@@ -98,7 +110,11 @@ fn scan_shell_text(text: &str, patterns: &[&str], file: &Path) -> Vec<EnvConflic
         };
         if matches(&name, patterns) {
             let value = value.trim_matches(|c| c == '"' || c == '\'');
-            out.push(EnvConflict { name, source: source.clone(), preview: redact::token(value) });
+            out.push(EnvConflict {
+                name,
+                source: source.clone(),
+                preview: redact::token(value),
+            });
         }
     }
     out
@@ -111,10 +127,18 @@ mod tests {
     #[test]
     fn finds_exports_and_fish_sets_but_not_comments() {
         let text = "# export ANTHROPIC_BASE_URL=https://commented\nexport ANTHROPIC_AUTH_TOKEN=\"sk-ant-secret-value\"\nOPENAI_API_KEY=sk-x\nset -gx GEMINI_API_KEY abc\nalias ll='ls -l'\n";
-        let found = scan_shell_text(text, &["ANTHROPIC_", "GEMINI_API_KEY"], Path::new("/x/.zshrc"));
+        let found = scan_shell_text(
+            text,
+            &["ANTHROPIC_", "GEMINI_API_KEY"],
+            Path::new("/x/.zshrc"),
+        );
         let names: Vec<&str> = found.iter().map(|c| c.name.as_str()).collect();
         assert_eq!(names, vec!["ANTHROPIC_AUTH_TOKEN", "GEMINI_API_KEY"]);
-        assert!(!found[0].preview.contains("secret-value"), "{}", found[0].preview);
+        assert!(
+            !found[0].preview.contains("secret-value"),
+            "{}",
+            found[0].preview
+        );
         assert_eq!(found[0].source, "/x/.zshrc");
     }
 

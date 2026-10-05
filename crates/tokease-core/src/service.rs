@@ -108,7 +108,11 @@ impl Tokease {
     }
 
     fn lock(&self, id: ClientId) -> std::sync::MutexGuard<'_, ()> {
-        self.locks.get(&id).expect("lock for every adapter").lock().unwrap_or_else(|p| p.into_inner())
+        self.locks
+            .get(&id)
+            .expect("lock for every adapter")
+            .lock()
+            .unwrap_or_else(|p| p.into_inner())
     }
 
     pub fn data_dir(&self) -> &Path {
@@ -133,7 +137,8 @@ impl Tokease {
     pub fn set_server_url(&self, url: &str) -> Result<SessionInfo> {
         let url = url.trim().trim_end_matches('/');
         url::Url::parse(url).map_err(|e| Error::Other(format!("invalid server URL: {e}")))?;
-        self.state.update(|s| s.server_url = Some(url.to_string()))?;
+        self.state
+            .update(|s| s.server_url = Some(url.to_string()))?;
         self.session()
     }
 
@@ -162,7 +167,10 @@ impl Tokease {
     }
 
     async fn require_token(&self) -> Result<String> {
-        self.token_async().await?.map(|(t, _)| t).ok_or(Error::NotLoggedIn)
+        self.token_async()
+            .await?
+            .map(|(t, _)| t)
+            .ok_or(Error::NotLoggedIn)
     }
 
     pub fn session(&self) -> Result<SessionInfo> {
@@ -172,7 +180,10 @@ impl Tokease {
             logged_in: tok.is_some(),
             user: if tok.is_some() { state.user } else { None },
             server_url: self.server_url(),
-            storage_backend: tok.as_ref().map(|(_, b)| *b).unwrap_or(StorageBackend::None),
+            storage_backend: tok
+                .as_ref()
+                .map(|(_, b)| *b)
+                .unwrap_or(StorageBackend::None),
             token_preview: tok.as_ref().map(|(t, _)| redact::token(t)),
             data_dir: self.data_dir.clone(),
         })
@@ -200,15 +211,27 @@ impl Tokease {
     }
 
     pub async fn device_poll(&self, device_code: &str) -> Result<LoginPoll> {
-        let DevicePoll { status, access_token, user } = self.api().device_poll(device_code).await?;
+        let DevicePoll {
+            status,
+            access_token,
+            user,
+        } = self.api().device_poll(device_code).await?;
         Ok(match status {
             DeviceStatus::Pending => LoginPoll::Pending,
             DeviceStatus::Expired => LoginPoll::Expired,
             DeviceStatus::Denied => LoginPoll::Denied,
             DeviceStatus::Authorized => {
-                let token = access_token.ok_or_else(|| Error::Other("server said authorized but sent no token".into()))?;
-                let user = user.unwrap_or(UserInfo { id: "me".into(), email: None, name: None });
-                LoginPoll::Authorized { session: self.complete_login(token, user).await? }
+                let token = access_token.ok_or_else(|| {
+                    Error::Other("server said authorized but sent no token".into())
+                })?;
+                let user = user.unwrap_or(UserInfo {
+                    id: "me".into(),
+                    email: None,
+                    name: None,
+                });
+                LoginPoll::Authorized {
+                    session: self.complete_login(token, user).await?,
+                }
             }
         })
     }
@@ -225,7 +248,8 @@ impl Tokease {
     pub async fn refresh_platform_config(&self) -> Result<ClientConfig> {
         let token = self.require_token().await?;
         let cfg = self.api().client_config(&token).await?;
-        self.state.update(|s| s.platform_config = Some(cfg.clone()))?;
+        self.state
+            .update(|s| s.platform_config = Some(cfg.clone()))?;
         Ok(cfg)
     }
 
@@ -246,7 +270,10 @@ impl Tokease {
                     return Ok(c);
                 }
                 match e {
-                    Error::Api { status: 404 | 405 | 501, .. } => {
+                    Error::Api {
+                        status: 404 | 405 | 501,
+                        ..
+                    } => {
                         log::warn!("server has no /client/config ({e}); using built-in defaults");
                         Ok(ClientConfig::builtin(&self.server_url()))
                     }
@@ -268,7 +295,10 @@ impl Tokease {
 
     pub fn client_statuses(&self) -> Result<Vec<ClientStatus>> {
         let state = self.state.load()?;
-        self.adapters.iter().map(|a| self.status_of(a.as_ref(), &state)).collect()
+        self.adapters
+            .iter()
+            .map(|a| self.status_of(a.as_ref(), &state))
+            .collect()
     }
 
     pub fn client_status(&self, id: ClientId) -> Result<ClientStatus> {
@@ -296,10 +326,12 @@ impl Tokease {
         };
 
         let outdated = match (a.min_version(), det.version.as_deref()) {
-            (Some(min), Some(have)) => match (locate::parse_version(min), locate::parse_version(have)) {
-                (Some(min), Some(have)) => have < min,
-                _ => false,
-            },
+            (Some(min), Some(have)) => {
+                match (locate::parse_version(min), locate::parse_version(have)) {
+                    (Some(min), Some(have)) => have < min,
+                    _ => false,
+                }
+            }
             _ => false,
         };
 
@@ -328,13 +360,17 @@ impl Tokease {
     pub async fn enable(&self, id: ClientId) -> Result<ClientStatus> {
         let a = self.adapter(id);
         if !a.detect().installed {
-            return Err(Error::NotInstalled { client: a.display_name().into() });
+            return Err(Error::NotInstalled {
+                client: a.display_name().into(),
+            });
         }
         let token = self.require_token().await?;
         let cfg = self.platform_config().await?;
         let flag = cfg.client(id.as_str());
         if !flag.enabled {
-            return Err(Error::ClientDisabled { client: a.display_name().into() });
+            return Err(Error::ClientDisabled {
+                client: a.display_name().into(),
+            });
         }
         let spec = ConnectionSpec {
             base_url: cfg.endpoint(a.protocol()).to_string(),
@@ -383,7 +419,9 @@ impl Tokease {
                     .backups
                     .latest(id)?
                     .map(|m| m.id)
-                    .ok_or_else(|| Error::NoBackup { client: a.display_name().into() })?,
+                    .ok_or_else(|| Error::NoBackup {
+                        client: a.display_name().into(),
+                    })?,
             },
         };
         let manifest = self.backups.load(id, &chosen)?;
@@ -405,7 +443,12 @@ impl Tokease {
                 id: m.id,
                 created_at: m.created_at,
                 dir: m.dir,
-                files: m.files.into_iter().filter(|f| f.existed).map(|f| f.original_path).collect(),
+                files: m
+                    .files
+                    .into_iter()
+                    .filter(|f| f.existed)
+                    .map(|f| f.original_path)
+                    .collect(),
             })
             .collect())
     }

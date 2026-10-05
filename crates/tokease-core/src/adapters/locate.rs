@@ -77,11 +77,19 @@ pub(crate) fn login_shell_path() -> Option<&'static str> {
 
 #[cfg(unix)]
 fn compute_login_shell_path() -> Option<String> {
-    let shell = std::env::var("SHELL").ok().filter(|s| Path::new(s).is_file()).unwrap_or_else(|| "/bin/sh".into());
+    let shell = std::env::var("SHELL")
+        .ok()
+        .filter(|s| Path::new(s).is_file())
+        .unwrap_or_else(|| "/bin/sh".into());
     // `/usr/bin/env` rather than `echo $PATH`: correct under fish too, and it
     // bypasses aliases/functions an interactive rc file may define.
-    let out = run_with_timeout(Command::new(&shell).arg("-lc").arg("/usr/bin/env"), Duration::from_secs(4))?;
-    out.lines().find_map(|l| l.strip_prefix("PATH=")).map(str::to_string)
+    let out = run_with_timeout(
+        Command::new(&shell).arg("-lc").arg("/usr/bin/env"),
+        Duration::from_secs(4),
+    )?;
+    out.lines()
+        .find_map(|l| l.strip_prefix("PATH="))
+        .map(str::to_string)
 }
 
 #[cfg(not(unix))]
@@ -96,14 +104,24 @@ fn compute_login_shell_path() -> Option<String> {
 pub(crate) fn version_of(binary: &Path) -> Option<String> {
     type Cache = Mutex<HashMap<(PathBuf, Option<SystemTime>), Option<String>>>;
     static CACHE: OnceLock<Cache> = OnceLock::new();
-    let key = (binary.to_path_buf(), std::fs::metadata(binary).and_then(|m| m.modified()).ok());
+    let key = (
+        binary.to_path_buf(),
+        std::fs::metadata(binary).and_then(|m| m.modified()).ok(),
+    );
     let cache = CACHE.get_or_init(Default::default);
     if let Some(hit) = cache.lock().ok().and_then(|c| c.get(&key).cloned()) {
         return hit;
     }
-    let version = run_with_timeout(Command::new(binary).arg("--version"), Duration::from_secs(5)).and_then(|out| {
+    let version = run_with_timeout(
+        Command::new(binary).arg("--version"),
+        Duration::from_secs(5),
+    )
+    .and_then(|out| {
         // Codex prints "codex-cli 0.160.0", Claude "2.1.29 (Claude Code)", Gemini "0.62.0".
-        out.lines().map(str::trim).find(|l| !l.is_empty()).map(str::to_string)
+        out.lines()
+            .map(str::trim)
+            .find(|l| !l.is_empty())
+            .map(str::to_string)
     });
     if let Ok(mut c) = cache.lock() {
         c.insert(key, version.clone());
@@ -113,19 +131,29 @@ pub(crate) fn version_of(binary: &Path) -> Option<String> {
 
 /// Semantic-ish version triple from a version line like `codex-cli 0.160.0`.
 pub fn parse_version(line: &str) -> Option<(u64, u64, u64)> {
-    line.split(|c: char| c.is_whitespace() || c == '(' || c == 'v').find_map(|tok| {
-        let mut it = tok.trim_matches(|c: char| !c.is_ascii_digit()).split('.');
-        let a = it.next()?.parse().ok()?;
-        let b = it.next()?.parse().ok()?;
-        let c = it.next().and_then(|s| s.split('-').next()).and_then(|s| s.parse().ok()).unwrap_or(0);
-        Some((a, b, c))
-    })
+    line.split(|c: char| c.is_whitespace() || c == '(' || c == 'v')
+        .find_map(|tok| {
+            let mut it = tok.trim_matches(|c: char| !c.is_ascii_digit()).split('.');
+            let a = it.next()?.parse().ok()?;
+            let b = it.next()?.parse().ok()?;
+            let c = it
+                .next()
+                .and_then(|s| s.split('-').next())
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0);
+            Some((a, b, c))
+        })
 }
 
 /// Run a command with stdin closed, returning stdout on success within
 /// `timeout`; the child is killed otherwise.
 fn run_with_timeout(cmd: &mut Command, timeout: Duration) -> Option<String> {
-    let mut child = cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().ok()?;
+    let mut child = cmd
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .ok()?;
     let deadline = Instant::now() + timeout;
     let mut stdout = child.stdout.take()?;
     // Read on a helper thread so a chatty child cannot block on a full pipe.
@@ -138,7 +166,9 @@ fn run_with_timeout(cmd: &mut Command, timeout: Duration) -> Option<String> {
         match child.try_wait() {
             Ok(Some(status)) => {
                 let buf = reader.join().ok()?;
-                return status.success().then(|| String::from_utf8_lossy(&buf).into_owned());
+                return status
+                    .success()
+                    .then(|| String::from_utf8_lossy(&buf).into_owned());
             }
             Ok(None) if Instant::now() >= deadline => {
                 let _ = child.kill();
@@ -168,8 +198,14 @@ mod tests {
     fn run_with_timeout_kills_slow_children() {
         #[cfg(unix)]
         {
-            assert!(run_with_timeout(Command::new("sleep").arg("5"), Duration::from_millis(100)).is_none());
-            assert_eq!(run_with_timeout(Command::new("echo").arg("hi"), Duration::from_secs(2)).as_deref(), Some("hi\n"));
+            assert!(
+                run_with_timeout(Command::new("sleep").arg("5"), Duration::from_millis(100))
+                    .is_none()
+            );
+            assert_eq!(
+                run_with_timeout(Command::new("echo").arg("hi"), Duration::from_secs(2)).as_deref(),
+                Some("hi\n")
+            );
         }
     }
 }

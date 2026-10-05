@@ -28,7 +28,10 @@ use std::path::PathBuf;
 
 use serde_json::{json, Value};
 
-use super::{detect_tool, home_dir, Adapter, ClientId, ConnectionSpec, CurrentConfig, Detection, PlannedFile, Validation};
+use super::{
+    detect_tool, home_dir, Adapter, ClientId, ConnectionSpec, CurrentConfig, Detection,
+    PlannedFile, Validation,
+};
 use crate::error::Result;
 use crate::floor;
 use crate::fsutil;
@@ -41,14 +44,18 @@ pub struct ClaudeAdapter {
 
 impl Default for ClaudeAdapter {
     fn default() -> Self {
-        let dir = std::env::var_os("CLAUDE_CONFIG_DIR").map(PathBuf::from).unwrap_or_else(|| home_dir().join(".claude"));
+        let dir = std::env::var_os("CLAUDE_CONFIG_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| home_dir().join(".claude"));
         Self::new(dir)
     }
 }
 
 impl ClaudeAdapter {
     pub fn new(config_dir: impl Into<PathBuf>) -> Self {
-        Self { config_dir: config_dir.into() }
+        Self {
+            config_dir: config_dir.into(),
+        }
     }
 
     /// `settings.json`, or the legacy `claude.json` when that is the only
@@ -71,15 +78,25 @@ impl ClaudeAdapter {
     }
 
     fn env_str(doc: &Value, key: &str) -> Option<String> {
-        jsonp::value_at(doc, &KeyPath::new(&["env", key])).and_then(Value::as_str).map(str::trim).filter(|s| !s.is_empty()).map(str::to_string)
+        jsonp::value_at(doc, &KeyPath::new(&["env", key]))
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string)
     }
 
     fn patch(spec: &ConnectionSpec) -> JsonPatch {
         let env = |key: &str, value: &str| (KeyPath::new(&["env", key]), json!(value));
         JsonPatch {
             clear: vec![
-                ClearScope { parent: KeyPath::root(), is_floor: floor::claude_floor_top },
-                ClearScope { parent: KeyPath::new(&["env"]), is_floor: floor::claude_floor_env },
+                ClearScope {
+                    parent: KeyPath::root(),
+                    is_floor: floor::claude_floor_top,
+                },
+                ClearScope {
+                    parent: KeyPath::new(&["env"]),
+                    is_floor: floor::claude_floor_env,
+                },
             ],
             set: vec![
                 env("ANTHROPIC_BASE_URL", &spec.base_url),
@@ -114,7 +131,9 @@ impl Adapter for ClaudeAdapter {
     }
 
     fn read_config(&self) -> CurrentConfig {
-        let Ok((_, doc)) = self.read_doc() else { return CurrentConfig::default() };
+        let Ok((_, doc)) = self.read_doc() else {
+            return CurrentConfig::default();
+        };
         let has_credential = Self::env_str(&doc, "ANTHROPIC_AUTH_TOKEN").is_some()
             || Self::env_str(&doc, "ANTHROPIC_API_KEY").is_some()
             || Self::env_str(&doc, "CLAUDE_CODE_OAUTH_TOKEN").is_some()
@@ -130,7 +149,12 @@ impl Adapter for ClaudeAdapter {
         let path = self.settings_path();
         let pre = fsutil::read_optional(&path)?;
         let content = Self::patch(spec).apply(&path, pre.as_deref())?;
-        Ok(vec![PlannedFile { path, pre, content, secret: true }])
+        Ok(vec![PlannedFile {
+            path,
+            pre,
+            content,
+            secret: true,
+        }])
     }
 
     fn validate_config(&self, base_url: &str) -> Validation {
@@ -141,17 +165,24 @@ impl Adapter for ClaudeAdapter {
         let mut problems = Vec::new();
         let url = Self::env_str(&doc, "ANTHROPIC_BASE_URL");
         if url.as_deref() != Some(base_url) {
-            problems.push(format!("env.ANTHROPIC_BASE_URL is {url:?}, expected {base_url:?}"));
+            problems.push(format!(
+                "env.ANTHROPIC_BASE_URL is {url:?}, expected {base_url:?}"
+            ));
         }
         if Self::env_str(&doc, "ANTHROPIC_AUTH_TOKEN").is_none() {
             problems.push("env.ANTHROPIC_AUTH_TOKEN is not set".into());
         }
         if Self::env_str(&doc, "ANTHROPIC_API_KEY").is_some() {
-            problems.push("env.ANTHROPIC_API_KEY is also set; Claude Code warns when both credentials exist".into());
+            problems.push(
+                "env.ANTHROPIC_API_KEY is also set; Claude Code warns when both credentials exist"
+                    .into(),
+            );
         }
         for key in floor::CLAUDE_PROTOCOL_SELECTORS {
             if Self::env_str(&doc, key).is_some_and(|v| v != "0" && v != "false") {
-                problems.push(format!("env.{key} is set and would bypass ANTHROPIC_BASE_URL"));
+                problems.push(format!(
+                    "env.{key} is set and would bypass ANTHROPIC_BASE_URL"
+                ));
             }
         }
         if doc.get("apiKeyHelper").is_some() {
@@ -212,15 +243,24 @@ mod tests {
         let v: Value = serde_json::from_str(&text).unwrap();
 
         assert!(v.get("apiKeyHelper").is_none());
-        assert!(v.get("model").is_none(), "previous provider's /model choice cleared");
+        assert!(
+            v.get("model").is_none(),
+            "previous provider's /model choice cleared"
+        );
         assert_eq!(v["theme"], "dark");
         assert_eq!(v["permissions"]["allow"][0], "Bash(ls)");
         let env = v["env"].as_object().unwrap();
         assert_eq!(env["FOO"], "bar");
-        assert_eq!(env["CLAUDE_CODE_USE_POWERSHELL_TOOL"], "1", "feature switch is not a key field");
+        assert_eq!(
+            env["CLAUDE_CODE_USE_POWERSHELL_TOOL"], "1",
+            "feature switch is not a key field"
+        );
         assert!(env.get("CLAUDE_CODE_USE_BEDROCK").is_none());
         assert!(env.get("AWS_REGION").is_none());
-        assert!(env.get("ANTHROPIC_API_KEY").is_none(), "only ANTHROPIC_AUTH_TOKEN is written");
+        assert!(
+            env.get("ANTHROPIC_API_KEY").is_none(),
+            "only ANTHROPIC_AUTH_TOKEN is written"
+        );
         assert_eq!(env["ANTHROPIC_BASE_URL"], "https://api.tokease.test/v1");
         assert_eq!(env["ANTHROPIC_AUTH_TOKEN"], "tk_test_1234567890abcdef");
         assert_eq!(env["ANTHROPIC_MODEL"], "code-best");

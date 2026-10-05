@@ -39,14 +39,18 @@ pub struct StateStore {
 
 impl StateStore {
     pub fn new(data_dir: &Path) -> Self {
-        Self { path: data_dir.join("state.json") }
+        Self {
+            path: data_dir.join("state.json"),
+        }
     }
 
     pub fn load(&self) -> Result<AppState> {
         match fsutil::read_optional(&self.path)? {
             None => Ok(AppState::default()),
-            Some(bytes) => serde_json::from_slice(&bytes)
-                .map_err(|e| Error::Json { path: self.path.clone(), message: e.to_string() }),
+            Some(bytes) => serde_json::from_slice(&bytes).map_err(|e| Error::Json {
+                path: self.path.clone(),
+                message: e.to_string(),
+            }),
         }
     }
 

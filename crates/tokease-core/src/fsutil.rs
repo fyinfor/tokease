@@ -50,7 +50,9 @@ pub fn file_mode(path: &Path) -> Option<u32> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        fs::metadata(path).ok().map(|m| m.permissions().mode() & 0o777)
+        fs::metadata(path)
+            .ok()
+            .map(|m| m.permissions().mode() & 0o777)
     }
     #[cfg(not(unix))]
     {

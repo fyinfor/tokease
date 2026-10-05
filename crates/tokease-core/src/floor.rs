@@ -154,7 +154,8 @@ pub fn gemini_floor_env(key: &str) -> bool {
 }
 
 /// Key fields in Gemini CLI `settings.json`, by key path.
-pub const GEMINI_FLOOR_SETTINGS: &[&[&str]] = &[&["security", "auth", "selectedType"], &["model", "name"]];
+pub const GEMINI_FLOOR_SETTINGS: &[&[&str]] =
+    &[&["security", "auth", "selectedType"], &["model", "name"]];
 
 #[cfg(test)]
 mod tests {
@@ -191,10 +192,20 @@ mod tests {
 
     #[test]
     fn gemini_floor_leaves_user_settings() {
-        for key in ["GOOGLE_GEMINI_BASE_URL", "GOOGLE_API_KEY", "GEMINI_API_KEY", "CODE_ASSIST_ENDPOINT"] {
+        for key in [
+            "GOOGLE_GEMINI_BASE_URL",
+            "GOOGLE_API_KEY",
+            "GEMINI_API_KEY",
+            "CODE_ASSIST_ENDPOINT",
+        ] {
             assert!(gemini_floor_env(key), "{key}");
         }
-        for key in ["GEMINI_CLI_HOME", "GEMINI_SANDBOX", "GEMINI_SYSTEM_MD", "DEBUG"] {
+        for key in [
+            "GEMINI_CLI_HOME",
+            "GEMINI_SANDBOX",
+            "GEMINI_SYSTEM_MD",
+            "DEBUG",
+        ] {
             assert!(!gemini_floor_env(key), "{key}");
         }
     }

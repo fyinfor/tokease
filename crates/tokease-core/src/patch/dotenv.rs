@@ -52,7 +52,11 @@ impl LivePatch for DotenvPatch {
         let targets: HashSet<&str> = self.set.iter().map(|(k, _)| k.as_str()).collect();
 
         if let Some(is_floor) = self.clear {
-            lines.retain(|l| l.key.as_deref().is_none_or(|k| !is_floor(k) || targets.contains(k)));
+            lines.retain(|l| {
+                l.key
+                    .as_deref()
+                    .is_none_or(|k| !is_floor(k) || targets.contains(k))
+            });
         }
 
         for (key, value) in &self.set {
@@ -65,17 +69,26 @@ impl LivePatch for DotenvPatch {
                     return false;
                 }
                 seen = true;
-                let export = if l.raw.trim_start().starts_with("export ") { "export " } else { "" };
+                let export = if l.raw.trim_start().starts_with("export ") {
+                    "export "
+                } else {
+                    ""
+                };
                 l.raw = format!("{export}{key}={value}");
                 true
             });
             if !seen {
-                lines.push(Line { raw: format!("{key}={value}"), key: Some(key.clone()) });
+                lines.push(Line {
+                    raw: format!("{key}={value}"),
+                    key: Some(key.clone()),
+                });
             }
         }
 
         lines.retain(|l| {
-            l.key.as_deref().is_none_or(|k| targets.contains(k) || !self.remove.iter().any(|d| d == k))
+            l.key
+                .as_deref()
+                .is_none_or(|k| targets.contains(k) || !self.remove.iter().any(|d| d == k))
         });
 
         for (key, values) in &self.remove_if {
@@ -83,12 +96,17 @@ impl LivePatch for DotenvPatch {
                 continue;
             }
             lines.retain(|l| {
-                l.key.as_deref() != Some(key.as_str()) || !values.iter().any(|v| unquote(value_of(&l.raw)) == v)
+                l.key.as_deref() != Some(key.as_str())
+                    || !values.iter().any(|v| unquote(value_of(&l.raw)) == v)
             });
         }
 
         let sep = if crlf { "\r\n" } else { "\n" };
-        let mut out = lines.iter().map(|l| l.raw.as_str()).collect::<Vec<_>>().join(sep);
+        let mut out = lines
+            .iter()
+            .map(|l| l.raw.as_str())
+            .collect::<Vec<_>>()
+            .join(sep);
         if trailing_newline && !lines.is_empty() {
             out.push_str(sep);
         }
@@ -113,7 +131,10 @@ pub fn entries(text: &str) -> Vec<(String, String)> {
 }
 
 pub fn get(text: &str, key: &str) -> Option<String> {
-    entries(text).into_iter().find(|(k, _)| k == key).map(|(_, v)| v)
+    entries(text)
+        .into_iter()
+        .find(|(k, _)| k == key)
+        .map(|(_, v)| v)
 }
 
 /// Variable name of `KEY=...` / `export KEY=...`; `None` for anything else.
@@ -146,7 +167,12 @@ mod tests {
     use super::*;
 
     fn apply(patch: &DotenvPatch, pre: Option<&str>) -> String {
-        String::from_utf8(patch.apply(Path::new(".env"), pre.map(str::as_bytes)).unwrap()).unwrap()
+        String::from_utf8(
+            patch
+                .apply(Path::new(".env"), pre.map(str::as_bytes))
+                .unwrap(),
+        )
+        .unwrap()
     }
 
     fn is_google(key: &str) -> bool {
@@ -157,7 +183,10 @@ mod tests {
     fn clears_floor_rewrites_in_place_and_keeps_other_lines() {
         let patch = DotenvPatch {
             clear: Some(is_google),
-            set: vec![("GEMINI_API_KEY".into(), "new".into()), ("GEMINI_MODEL".into(), "m".into())],
+            set: vec![
+                ("GEMINI_API_KEY".into(), "new".into()),
+                ("GEMINI_MODEL".into(), "m".into()),
+            ],
             ..Default::default()
         };
         let pre = "# mine\nGEMINI_SANDBOX=docker\nexport GEMINI_API_KEY=\"old\"\nGOOGLE_GEMINI_BASE_URL=https://a\nGEMINI_API_KEY=dup\nDEBUG=1\n";
@@ -171,13 +200,19 @@ mod tests {
     #[test]
     fn entries_take_the_last_value_and_unquote() {
         let text = "A='x'\nB=\"y\"\nA=z\n# C=1\n";
-        assert_eq!(entries(text), vec![("A".into(), "z".into()), ("B".into(), "y".into())]);
+        assert_eq!(
+            entries(text),
+            vec![("A".into(), "z".into()), ("B".into(), "y".into())]
+        );
         assert_eq!(get(text, "B").as_deref(), Some("y"));
     }
 
     #[test]
     fn crlf_is_preserved() {
-        let patch = DotenvPatch { set: vec![("K".into(), "v".into())], ..Default::default() };
+        let patch = DotenvPatch {
+            set: vec![("K".into(), "v".into())],
+            ..Default::default()
+        };
         assert_eq!(apply(&patch, Some("A=1\r\n")), "A=1\r\nK=v\r\n");
     }
 }

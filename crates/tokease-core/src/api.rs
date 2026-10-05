@@ -51,7 +51,10 @@ fn default_true() -> bool {
 impl From<ClientFlagWire> for ClientFlag {
     fn from(w: ClientFlagWire) -> Self {
         match w {
-            ClientFlagWire::Bool(b) => ClientFlag { enabled: b, wire_api: None },
+            ClientFlagWire::Bool(b) => ClientFlag {
+                enabled: b,
+                wire_api: None,
+            },
             ClientFlagWire::Obj { enabled, wire_api } => ClientFlag { enabled, wire_api },
         }
     }
@@ -78,11 +81,17 @@ pub struct ClientConfig {
 
 impl ClientConfig {
     pub fn endpoint(&self, protocol: &str) -> &str {
-        self.endpoints.get(protocol).map(String::as_str).unwrap_or(&self.base_url)
+        self.endpoints
+            .get(protocol)
+            .map(String::as_str)
+            .unwrap_or(&self.base_url)
     }
 
     pub fn client(&self, id: &str) -> ClientFlag {
-        self.clients.get(id).cloned().unwrap_or(ClientFlag { enabled: true, wire_api: None })
+        self.clients.get(id).cloned().unwrap_or(ClientFlag {
+            enabled: true,
+            wire_api: None,
+        })
     }
 
     /// Model id for a tier (`fast`, `cheap`), if the platform offers one.
@@ -91,7 +100,10 @@ impl ClientConfig {
             return Some(id.clone());
         }
         let suffix = format!("-{name}");
-        self.models.iter().find(|m| m.id.ends_with(&suffix) || m.id == name).map(|m| m.id.clone())
+        self.models
+            .iter()
+            .find(|m| m.id.ends_with(&suffix) || m.id == name)
+            .map(|m| m.id.clone())
     }
 
     /// What we assume when the server has no `/client/config` yet: the
@@ -103,7 +115,11 @@ impl ClientConfig {
             Some(root) => (root.to_string(), trimmed.to_string()),
             None => (trimmed.to_string(), format!("{trimmed}/v1")),
         };
-        let model = |id: &str, name: &str| ModelInfo { id: id.into(), name: name.into(), description: None };
+        let model = |id: &str, name: &str| ModelInfo {
+            id: id.into(),
+            name: name.into(),
+            description: None,
+        };
         ClientConfig {
             base_url: v1.clone(),
             endpoints: BTreeMap::from([
@@ -111,7 +127,11 @@ impl ClientConfig {
                 ("anthropic".to_string(), root.clone()),
                 ("gemini".to_string(), root),
             ]),
-            models: vec![model("code-best", "最佳编程"), model("code-fast", "快速编程"), model("code-cheap", "经济编程")],
+            models: vec![
+                model("code-best", "最佳编程"),
+                model("code-fast", "快速编程"),
+                model("code-cheap", "经济编程"),
+            ],
             default_model: "code-best".into(),
             clients: BTreeMap::new(),
             tiers: BTreeMap::new(),
@@ -187,7 +207,10 @@ impl ApiClient {
             .user_agent(concat!("tokease-desktop/", env!("CARGO_PKG_VERSION")))
             .build()
             .expect("reqwest client");
-        Self { base: server_url.trim_end_matches('/').to_string(), http }
+        Self {
+            base: server_url.trim_end_matches('/').to_string(),
+            http,
+        }
     }
 
     pub fn server_url(&self) -> &str {
@@ -208,8 +231,16 @@ impl ApiClient {
             .await
             .ok()
             .and_then(|b| b.message)
-            .unwrap_or_else(|| status.canonical_reason().unwrap_or("request failed").to_string());
-        Err(Error::Api { status: status.as_u16(), message })
+            .unwrap_or_else(|| {
+                status
+                    .canonical_reason()
+                    .unwrap_or("request failed")
+                    .to_string()
+            });
+        Err(Error::Api {
+            status: status.as_u16(),
+            message,
+        })
     }
 
     pub async fn device_start(&self) -> Result<DeviceStart> {
@@ -243,7 +274,10 @@ impl ApiClient {
     }
 
     pub async fn client_config(&self, token: &str) -> Result<ClientConfig> {
-        log::debug!("fetching /client/config with token {}", redact::token(token));
+        log::debug!(
+            "fetching /client/config with token {}",
+            redact::token(token)
+        );
         let resp = self
             .http
             .get(self.url("/client/config"))
