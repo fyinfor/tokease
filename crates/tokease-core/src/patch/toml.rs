@@ -2,6 +2,7 @@
 //! comments, whitespace and key order. These are the decor-preserving edit
 //! primitives from CC Switch's Codex projection; the Codex-specific patch
 //! itself lives in `adapters::codex`.
+//! Copyright (c) 2025 Jason Young. Adapted from CC Switch. MIT; see LICENSE.
 
 use std::path::Path;
 

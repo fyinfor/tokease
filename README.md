@@ -218,7 +218,7 @@ fn env_conflict_prefixes(&self) -> &'static [&'static str];
 
 ## 与 CC Switch 的关系
 
-移植了它的核心写入模型（`live/floor.rs` 的关键字段定义、`live/patch` 的保序 JSON / dotenv 补丁器、Codex 投影里的 TOML 原位改值 / 表形态保持 / 保留 id 改名 / profile 改道校验、写引擎的「解析失败即停止、写前哈希比对、no-op 检测、每应用一把锁」、`env_checker` 的环境变量冲突扫描），按 Tokease「单供应商、一键启用 / 恢复」的场景简化：没有多供应商切换、独有字段残留清理、代理、MCP / Skills / 用量同步等模块。UI 完全独立，不依赖 CC Switch 代码。模型切换、本地路由和手机端任务控制不在这次移植里，见下方路线图。
+移植了它的核心写入模型（`live/floor.rs` 的关键字段定义、`live/patch` 的保序 JSON / dotenv 补丁器、Codex 投影里的 TOML 原位改值 / 表形态保持 / 保留 id 改名 / profile 改道校验、`env_checker` 的环境变量冲突扫描），按 Tokease「单供应商、一键启用 / 恢复」的场景简化：没有多供应商切换、独有字段残留清理、代理、MCP / Skills / 用量同步等模块。UI 完全独立，不依赖 CC Switch 代码。CC Switch 是 MIT，Copyright (c) 2025 Jason Young。这些改编部分继续使用 MIT，原版权声明和许可全文保留在 [LICENSE](LICENSE)。模型切换、本地路由和手机端任务控制不在这次移植里，见下方路线图。
 
 ## 路线图
 
@@ -247,4 +247,6 @@ fn env_conflict_prefixes(&self) -> &'static [&'static str];
 
 ## 许可证
 
-[MIT](LICENSE) © 2026 fyinfor
+[MIT](LICENSE) © 2026 fyinfor。
+
+`floor.rs`、`patch/`、Codex 配置写入和 `envcheck.rs` 改编自 [CC Switch](https://github.com/farion1231/cc-switch)（MIT，© 2025 Jason Young）。原版权声明和许可全文在 [LICENSE](LICENSE)。

@@ -1,4 +1,5 @@
-//! Key fields ("the floor") — ported from CC Switch's `live/floor.rs`.
+//! Key fields ("the floor") — adapted from CC Switch `src-tauri/src/live/floor.rs`.
+//! Copyright (c) 2025 Jason Young. MIT; the notice is in the repository LICENSE.
 //!
 //! Key fields answer four questions: where do requests go, what credential
 //! is used, which model name, which protocol. They belong entirely to the

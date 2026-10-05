@@ -274,10 +274,44 @@ def self_test() -> list[str]:
     return errors
 
 
+def check_license() -> list[str]:
+    """MIT notice for this repo and for the CC Switch portions must stay put."""
+    problems: list[str] = []
+    license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
+    required = (
+        "Copyright (c) 2026 fyinfor",
+        "Copyright (c) 2025 Jason Young",
+        "https://github.com/farion1231/cc-switch",
+        "Permission is hereby granted, free of charge",
+    )
+    for needle in required:
+        if license_text.count(needle) < (2 if needle.startswith("Permission") else 1):
+            problems.append(f"LICENSE: 缺少「{needle}」")
+    if "AGPL" in license_text or "GPL-3.0" in license_text:
+        problems.append("LICENSE: 仍包含 AGPL/GPL 声明")
+    cargo = (ROOT / "Cargo.toml").read_text(encoding="utf-8")
+    package = (ROOT / "package.json").read_text(encoding="utf-8")
+    if 'license = "MIT"' not in cargo:
+        problems.append('Cargo.toml: license 不是 "MIT"')
+    if '"license": "MIT"' not in package:
+        problems.append('package.json: license 不是 "MIT"')
+    if "AGPL" in cargo or "AGPL" in package:
+        problems.append("Cargo.toml 或 package.json 仍写着 AGPL")
+    return problems
+
+
 def main() -> int:
     problems = self_test() + scan()
-    if not problems:
+    license_problems = check_license()
+    if not problems and not license_problems:
         return 0
+    if license_problems:
+        print("许可证声明不完整：", file=sys.stderr)
+        for item in license_problems:
+            print(item, file=sys.stderr)
+        print("", file=sys.stderr)
+    if not problems:
+        return 1
     print("提交被合规检查拦住。Tokease 只接受下面这组条件同时成立：", file=sys.stderr)
     for line in CONDITIONS:
         print(f"  {line}", file=sys.stderr)

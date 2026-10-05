@@ -1,4 +1,5 @@
-//! Environment-variable conflict checker (after CC Switch's `env_checker`).
+//! Environment-variable conflict checker, adapted from CC Switch's `env_checker`.
+//! Copyright (c) 2025 Jason Young. MIT; the notice is in the repository LICENSE.
 //!
 //! All three CLIs let environment variables override their config files:
 //! `ANTHROPIC_BASE_URL` in `~/.zshrc` silently beats `settings.json`, an

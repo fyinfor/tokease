@@ -1,6 +1,7 @@
 //! `.env` patcher (Gemini CLI's `~/.gemini/.env`): line based; comments,
 //! blank lines, unrecognised lines and the order of other variables are
 //! preserved.
+//! Copyright (c) 2025 Jason Young. Adapted from CC Switch. MIT; see LICENSE.
 
 use std::collections::HashSet;
 use std::path::Path;

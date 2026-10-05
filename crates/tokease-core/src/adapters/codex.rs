@@ -1,4 +1,6 @@
 //! Codex CLI adapter.
+//! Copyright (c) 2025 Jason Young. The config write path is adapted from
+//! CC Switch. MIT; the notice is in the repository LICENSE.
 //!
 //! Only `config.toml` (under `$CODEX_HOME`, default `~/.codex`) is written;
 //! `auth.json` — the ChatGPT login — is never touched. Codex ≥ 0.149 reads a

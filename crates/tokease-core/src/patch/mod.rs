@@ -1,4 +1,5 @@
-//! Order-preserving patchers (ported from CC Switch's `live/patch`).
+//! Order-preserving patchers, adapted from CC Switch `src-tauri/src/live/patch`.
+//! Copyright (c) 2025 Jason Young. MIT; the notice is in the repository LICENSE.
 //!
 //! Each format has one patch type implementing [`LivePatch`]: input is the
 //! file's current bytes (`None` when it does not exist), output is the new

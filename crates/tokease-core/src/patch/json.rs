@@ -1,4 +1,5 @@
 //! JSON patcher (Claude Code `settings.json`, Gemini CLI `settings.json`).
+//! Copyright (c) 2025 Jason Young. Adapted from CC Switch. MIT; see LICENSE.
 //!
 //! `serde_json` runs with `preserve_order`, so keys keep their file order.
 //! Under `preserve_order`, `Map::remove` is a swap-remove that would move the
