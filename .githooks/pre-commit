@@ -1,0 +1,5 @@
+#!/bin/sh
+# 合规门禁。判断标准在 scripts/compliance_check.py。
+root=$(git rev-parse --show-toplevel) || exit 1
+cd "$root" || exit 1
+exec python3 scripts/compliance_check.py
