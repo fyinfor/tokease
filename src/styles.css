@@ -16,23 +16,23 @@
   font-size: 13px;
   line-height: 1.45;
   color: var(--text);
-  background: var(--bg);
+  background: transparent;
   -webkit-font-smoothing: antialiased;
   font-synthesis: none;
 }
 
 * { box-sizing: border-box; }
 
-html, body, #root { height: 100%; }
+html, body, #root {
+  height: 100%;
+  background: transparent;
+}
 
 body {
   margin: 0;
   overflow: hidden;
   user-select: none;
-  background:
-    radial-gradient(circle at 75% 0%, rgba(78, 55, 255, 0.22), transparent 35%),
-    radial-gradient(circle at 0% 100%, rgba(0, 129, 255, 0.17), transparent 34%),
-    var(--bg);
+  background: transparent;
 }
 
 button, input { font: inherit; color: inherit; }
@@ -53,13 +53,20 @@ ul { margin: 0; padding: 0; list-style: none; }
 .skip:focus { top: 12px; }
 
 .shell {
-  height: 100%;
+  height: calc(100% - 20px);
+  width: calc(100% - 20px);
+  margin: 10px;
   display: flex;
   flex-direction: column;
   min-width: 0;
-  background: linear-gradient(145deg, rgba(14, 25, 45, 0.98), rgba(5, 12, 24, 0.98));
+  overflow: hidden;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 75% 0%, rgba(78, 55, 255, 0.22), transparent 35%),
+    radial-gradient(circle at 0% 100%, rgba(0, 129, 255, 0.17), transparent 34%),
+    linear-gradient(145deg, rgba(14, 25, 45, 0.98), rgba(5, 12, 24, 0.98));
   border: 1px solid rgba(78, 133, 255, 0.38);
-  box-shadow: 0 0 60px rgba(43, 91, 255, 0.09);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45), 0 0 60px rgba(43, 91, 255, 0.09);
 }
 
 /* header */
