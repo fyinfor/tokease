@@ -244,3 +244,7 @@ fn env_conflict_prefixes(&self) -> &'static [&'static str];
 - Codex < 0.149 不支持 `experimental_bearer_token`，卡片会提示升级；不再回退到改写 `auth.json`
 - 备份不自动清理（都很小，但可在高级页手动查看）
 - 本机 Linux 开发时若装不了 `libwebkit2gtk-4.1-dev`，可以先用 `pnpm dev` + `pnpm cli` 覆盖全部逻辑
+
+## 许可证
+
+[MIT](LICENSE) © 2026 fyinfor
