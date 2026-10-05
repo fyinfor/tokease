@@ -23,7 +23,14 @@ const NAV: { id: Page; label: string; icon: typeof IconHome }[] = [
   { id: "tasks", label: "任务", icon: IconTasks },
 ];
 
-async function withWindow(fn: (win: { minimize: () => Promise<void>; toggleMaximize: () => Promise<void>; close: () => Promise<void> }) => Promise<void>) {
+async function withWindow(
+  fn: (win: {
+    minimize: () => Promise<void>;
+    toggleMaximize: () => Promise<void>;
+    close: () => Promise<void>;
+    isMaximized: () => Promise<boolean>;
+  }) => Promise<void>,
+) {
   if (!isTauri) return;
   const { getCurrentWindow } = await import("@tauri-apps/api/window");
   await fn(getCurrentWindow());
@@ -39,6 +46,7 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [maximized, setMaximized] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -56,6 +64,34 @@ export default function App() {
     window.addEventListener("focus", refresh);
     return () => window.removeEventListener("focus", refresh);
   }, [refresh]);
+
+  useEffect(() => {
+    if (!isTauri) return;
+    let stop = () => {};
+    let alive = true;
+    (async () => {
+      const { getCurrentWindow } = await import("@tauri-apps/api/window");
+      const win = getCurrentWindow();
+      const sync = async () => {
+        try {
+          const on = await win.isMaximized();
+          if (alive) setMaximized(on);
+        } catch {
+          /* 非桌面环境或权限未就绪时保持窗口态 */
+        }
+      };
+      await sync();
+      const unlist = await win.onResized(() => {
+        void sync();
+      });
+      if (!alive) unlist();
+      else stop = unlist;
+    })();
+    return () => {
+      alive = false;
+      stop();
+    };
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -127,7 +163,7 @@ export default function App() {
   const userLabel = session?.logged_in ? session.user?.name || session.user?.email || session.user?.id || "已登录" : "未登录";
 
   return (
-    <div className="shell">
+    <div className={maximized ? "shell shell--max" : "shell"}>
       <a className="skip" href="#content">
         跳到内容
       </a>
@@ -180,7 +216,16 @@ export default function App() {
             <button type="button" aria-label="最小化" onClick={() => withWindow((w) => w.minimize())}>
               <IconMinus size={14} />
             </button>
-            <button type="button" aria-label="最大化" onClick={() => withWindow((w) => w.toggleMaximize())}>
+            <button
+              type="button"
+              aria-label="最大化"
+              onClick={() =>
+                withWindow(async (w) => {
+                  await w.toggleMaximize();
+                  setMaximized(await w.isMaximized());
+                })
+              }
+            >
               <IconSquare size={14} />
             </button>
             <button type="button" className="wins__close" aria-label="关闭" onClick={() => withWindow((w) => w.close())}>
