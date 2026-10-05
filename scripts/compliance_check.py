@@ -2,8 +2,8 @@
 """Pre-commit gate for the Tokease compliance architecture.
 
 Allowed shape:
-  official CLI + Tokease custom base URL + the user's own Tokease gateway key,
-  with upstream traffic on a commercial API the contract permits for downstream users.
+  official CLI + Tokease custom base URL + the user's own Tokease gateway key.
+  Upstream tokease.com is an accepted commercial API, including downstream use.
 
 The check fails the commit when source leaves that shape.
 """
@@ -21,11 +21,9 @@ CONDITIONS = (
     "1. 官方 CLI 不被魔改成绕过认证/限制的版本",
     "2. CLI 使用的是 Tokease Gateway Key",
     "3. Tokease Key 只是你自己的用户认证凭据",
-    "4. 上游使用合法商业 API",
-    "5. 不共享/转售上游 API key",
-    "6. 不接 Claude Pro/Max、ChatGPT Plus/Pro 的消费者 OAuth 号池",
-    "7. 不绕过 rate limit、安全限制或供应商使用政策",
-    "8. 如果向外销售模型调用能力，与上游的合同允许 Customer Application / downstream end-user 使用",
+    "4. 不共享/转售上游 API key",
+    "5. 不接 Claude Pro/Max、ChatGPT Plus/Pro 的消费者 OAuth 号池",
+    "6. 不绕过 rate limit、安全限制或供应商使用政策",
 )
 
 VERDICT = "这是相对标准、可落地的合规架构。"
@@ -177,15 +175,15 @@ def check_text(rel: str, text: str) -> list[str]:
 
     for n, line in enumerate(lines, 1):
         if SKIP_AUTH_ENABLE.search(line):
-            add(n, "1/7", "把 CLAUDE_CODE_SKIP_*_AUTH 写成开启，等于绕过官方 CLI 的认证")
+            add(n, "1/6", "把 CLAUDE_CODE_SKIP_*_AUTH 写成开启，等于绕过官方 CLI 的认证")
         if OAUTH_ENV_WRITE.search(line) or OAUTH_ASSIGN.search(line):
-            add(n, "6", "写入了 Claude 消费者 OAuth 凭据")
+            add(n, "5", "写入了 Claude 消费者 OAuth 凭据")
         if POOL.search(line):
-            add(n, "6", "出现消费者 OAuth / 订阅号池")
+            add(n, "5", "出现消费者 OAuth / 订阅号池")
         if UPSTREAM_KEY.search(line):
-            add(n, "5", "源码里写了上游 API key")
+            add(n, "4", "源码里写了上游 API key")
         if RATE_BYPASS.search(line):
-            add(n, "7", "出现绕过 rate limit 的逻辑")
+            add(n, "6", "出现绕过 rate limit 的逻辑")
         if BINARY_PATCH.search(line):
             add(n, "1", "出现修改官方 CLI 二进制的逻辑")
 
@@ -207,12 +205,12 @@ def check_text(rel: str, text: str) -> list[str]:
                     if re.search(r"(?:put_value|env|\.insert|set)\s*\(", stmt) or "json!(spec" in stmt:
                         add(line_no, "2/3", "写入 CLI 的凭据不是 spec.token（用户自己的 Tokease Gateway Key）")
         if "requires_openai_auth" in stmt and re.search(r"\bfrom\(\s*true\s*\)", stmt):
-            add(line_no, "6", "requires_openai_auth 被固定为 true，会接上 ChatGPT 消费者登录")
+            add(line_no, "5", "requires_openai_auth 被固定为 true，会接上 ChatGPT 消费者登录")
         if any(field in stmt for field in CREDENTIAL_FIELDS) and any(name in stmt for name in CONSUMER_OAUTH):
             if "spec.token" in stmt and re.search(r"CLAUDE_CODE_OAUTH_|refresh_token|id_token", stmt):
-                add(line_no, "6", "网关密钥和消费者 OAuth 令牌写在同一次凭据赋值里")
+                add(line_no, "5", "网关密钥和消费者 OAuth 令牌写在同一次凭据赋值里")
         if UPSTREAM_HOST.search(stmt) and any(op in stmt for op in WRITE_OPENERS):
-            add(line_no, "2/4", "把官方 CLI 的请求地址写成了上游本站，而不是 Tokease 网关")
+            add(line_no, "2", "把官方 CLI 的请求地址写成了上游本站，而不是 Tokease 网关")
 
     return problems
 
@@ -285,7 +283,6 @@ def main() -> int:
         print(f"  {line}", file=sys.stderr)
     print(f"满足时：{VERDICT}", file=sys.stderr)
     print("官方 CLI + Tokease 自定义 Base URL + Tokease Gateway Key 可以保留。", file=sys.stderr)
-    print("上线前仍要确认每个上游采购合同允许这种下游分发和计费。", file=sys.stderr)
     print("", file=sys.stderr)
     for item in problems:
         print(item, file=sys.stderr)
